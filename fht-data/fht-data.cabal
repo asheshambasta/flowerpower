@@ -1,26 +1,14 @@
-cabal-version:      >=1.10
+cabal-version: 2.2
 name:               fht-data
 version:            0.1.0.0
-license:            BSD3
+license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Ashesh Ambasta
 maintainer:         ashesh@asheshambasta.com
 build-type:         Simple
 extra-source-files: README.md
-
-library 
-  hs-source-dirs:     src
-  build-depends:
-      base
-    , text
-    , protolude 
-    , containers
-    , lens
-    , data-default-class
-    
-  exposed-modules:
-  other-modules: 
-
+                    
+common common-default-extensions
   default-extensions:
     DataKinds
     FlexibleContexts
@@ -32,7 +20,13 @@ library
     TypeFamilies
     DerivingVia 
     RecordWildCards
-
+    StrictData 
+    DeriveGeneric 
+    StrictData
+    ViewPatterns
+    LambdaCase
+    
+common common-ghc-options 
   ghc-options:        -Wall -threaded -Wno-unused-do-bind
 
   if impl(ghcjs -any)
@@ -43,3 +37,55 @@ library
 
   if os(osx)
     ghc-options: -dynamic
+    
+common common-build-depends
+  build-depends:
+      base
+    , text
+    , protolude 
+    , containers
+    , lens
+    , data-default-class
+    , aeson
+    , time
+    
+------------------
+-- Core library --
+------------------
+
+library 
+
+  import: common-default-extensions
+        , common-ghc-options
+        , common-build-depends
+
+  hs-source-dirs:     src
+  exposed-modules:
+    Data.Garden.Plant
+  other-modules: 
+  
+-----------
+-- Tests --
+-----------
+
+test-suite fht-data-test
+  import: common-default-extensions
+        , common-build-depends
+  default-language: Haskell2010
+  ghc-options:
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  hs-source-dirs:
+    test
+  other-modules:
+    Data.Garden.PlantSpec
+  build-depends: 
+      QuickCheck
+    , quickcheck-instances
+    , hspec
+    , prettyprinter
+    , fht-data
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs 
+  build-tool-depends: hspec-discover:hspec-discover == 2.*
