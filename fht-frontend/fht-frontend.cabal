@@ -1,0 +1,62 @@
+cabal-version:      >=1.10
+name:               fht-frontend
+version:            0.1.0.0
+license:            BSD3
+license-file:       LICENSE
+author:             Ashesh Ambasta
+maintainer:         ashesh@asheshambasta.com
+build-type:         Simple
+extra-source-files: README.md
+
+executable fht-frontend
+  hs-source-dirs:     src
+  main-is:            Main.hs
+  build-depends:
+      base
+    , reflex
+    , reflex-dom
+    , reflex-dom-helpers
+    , bulmex
+    , text
+    , protolude 
+    , containers
+    , lens
+    , data-default-class
+    , witherable
+    -- the frontend needs the data types. 
+    , fht-data
+    -- and the API for client functions.
+    , fht-api
+    
+  other-modules: 
+    Exercises.Ex02
+    Exercises.Ex03
+    Exercises.Shared
+    Exercises.Shared.Widgets
+    Lib.Reflex.Buttons
+    Lib.Reflex.Elements
+    Lib.Reflex.Clicks 
+    Exercises.Shared.Widgets.Bulma
+
+  default-extensions:
+    DataKinds
+    FlexibleContexts
+    NoImplicitPrelude
+    LambdaCase
+    OverloadedStrings
+    ScopedTypeVariables
+    GADTs 
+    TypeFamilies
+    DerivingVia 
+    RecordWildCards
+
+  ghc-options:        -Wall -threaded -Wno-unused-do-bind
+
+  if impl(ghcjs -any)
+    ghc-options: -dedupe
+    cpp-options: -DGHCJS_BROWSER
+
+  default-language:   Haskell2010
+
+  if os(osx)
+    ghc-options: -dynamic

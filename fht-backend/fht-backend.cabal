@@ -1,0 +1,48 @@
+cabal-version:      >=1.10
+name:               fht-backend
+version:            0.1.0.0
+license:            BSD3
+license-file:       LICENSE
+author:             Ashesh Ambasta
+maintainer:         ashesh@asheshambasta.com
+build-type:         Simple
+extra-source-files: README.org
+
+executable fht-backend
+  hs-source-dirs:     src
+  build-depends:
+      base
+    , text
+    , protolude 
+    , containers
+    , lens
+    , data-default-class
+    , fht-data 
+    , fht-api
+    
+  main-is: Main.hs
+    
+  other-modules: 
+
+  default-extensions:
+    DataKinds
+    FlexibleContexts
+    NoImplicitPrelude
+    LambdaCase
+    OverloadedStrings
+    ScopedTypeVariables
+    GADTs 
+    TypeFamilies
+    DerivingVia 
+    RecordWildCards
+
+  ghc-options:        -Wall -threaded -Wno-unused-do-bind
+
+  if impl(ghcjs -any)
+    ghc-options: -dedupe
+    cpp-options: -DGHCJS_BROWSER
+
+  default-language:   Haskell2010
+
+  if os(osx)
+    ghc-options: -dynamic

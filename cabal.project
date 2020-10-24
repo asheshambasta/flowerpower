@@ -1,0 +1,5 @@
+packages:
+    ./fht-data
+    ./fht-api
+    ./fht-frontend 
+    ./fht-backend
