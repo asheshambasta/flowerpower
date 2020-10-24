@@ -1,14 +1,14 @@
 {
     "bulmex": {
-        "branch": "master",
+        "branch": "asheshambasta/feature/bounds",
         "description": "reflex infused with bulma",
         "homepage": null,
-        "owner": "jappeace",
+        "owner": "asheshambasta",
         "repo": "bulmex",
-        "rev": "cd4571e918a4ff70568da075b79edb60d265d330",
-        "sha256": "02d0an5kgxs9mb124rdaz72gdyzbni72aspwaadsplx7yvz73hwq",
+        "rev": "fbe4c932aebeb1b7d3a45abc881f4320fb529738",
+        "sha256": "1lvq9f0ny7v5idj8nxbiam5vwcivh497qqsj52zmi1bni8c4pf4q",
         "type": "tarball",
-        "url": "https://github.com/jappeace/bulmex/archive/cd4571e918a4ff70568da075b79edb60d265d330.tar.gz",
+        "url": "https://github.com/asheshambasta/bulmex/archive/fbe4c932aebeb1b7d3a45abc881f4320fb529738.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "niv": {
@@ -33,6 +33,18 @@
         "sha256": "008xyc2yzaw8m1ikjq04fsp1rhcfn2a7zn445kwqqngb5vs7w8b6",
         "type": "tarball",
         "url": "https://github.com/NixOS/nixpkgs/archive/d74573d8ae6f02ef0ac1299c862d1b762ba0aad1.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "reflex-dom-helpers": {
+        "branch": "asheshambasta/feature/nix",
+        "description": "Element helpers for reflex-dom",
+        "homepage": null,
+        "owner": "asheshambasta",
+        "repo": "reflex-dom-helpers",
+        "rev": "c4b3592f6ca7ae56470a2c05b048edc208ac9384",
+        "sha256": "1rx4ayk0ww4k86w8qlzc7agw7qs5syv70626gm2a356jrg5mxbvm",
+        "type": "tarball",
+        "url": "https://github.com/asheshambasta/reflex-dom-helpers/archive/c4b3592f6ca7ae56470a2c05b048edc208ac9384.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "reflex-platform": {
