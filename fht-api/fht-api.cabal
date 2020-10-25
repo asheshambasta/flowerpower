@@ -18,8 +18,11 @@ library
     , lens
     , data-default-class
     , fht-data
+    -- , servant 
+    , servant-reflex == 0.3.6
     
   exposed-modules:
+    Api.Garden.Plant 
   other-modules: 
 
   default-extensions:
