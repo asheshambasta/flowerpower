@@ -21,8 +21,8 @@ in rp.project ({ pkgs, ... }: {
   };
 
   overrides = self: super: { 
-    inherit (sources) bulmex reflex-dom-helpers;
-    servant-reflex = self.callCabal2nix "servant-reflex" ../../servant-reflex {};
+    inherit (sources) bulmex reflex-dom-helpers servant-reflex;
+    # servant-reflex = self.callCabal2nix "servant-reflex" ../../servant-reflex {};
     # servant-reflex = self.callPackage ../../servant-reflex {};
   };
 

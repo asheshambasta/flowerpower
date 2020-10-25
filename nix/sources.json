@@ -58,5 +58,17 @@
         "type": "tarball",
         "url": "https://github.com/reflex-frp/reflex-platform/archive/b14992ae74cac755f0e972569434c71ad35489eb.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "servant-reflex": {
+        "branch": "master",
+        "description": "Generate reflex client functions for querying a servant API",
+        "homepage": null,
+        "owner": "asheshambasta",
+        "repo": "servant-reflex",
+        "rev": "a1edb7565451c2e4cf442c38a2f50e49c0b5707f",
+        "sha256": "0g5nm2n004r6iais710azvqncw9j15zhvc8gr4w4hxrkf759fc9q",
+        "type": "tarball",
+        "url": "https://github.com/asheshambasta/servant-reflex/archive/a1edb7565451c2e4cf442c38a2f50e49c0b5707f.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }
