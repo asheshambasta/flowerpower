@@ -13,7 +13,7 @@ in rp.project ({ pkgs, ... }: {
   shells = {
     ghc = [ "fht-frontend" "fht-backend" "fht-data" "fht-api" ] # ++ ( with pkgs; [ inotify-tools ])
     ;
-    ghcjs = [ "fht-frontend" ];
+    ghcjs = [ "fht-frontend" "fht-data" "fht-api" ];
   };
 
   overrides = self: super: { 

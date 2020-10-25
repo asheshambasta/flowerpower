@@ -16,7 +16,11 @@ executable fht-frontend
     , reflex
     , reflex-dom
     , reflex-dom-helpers
+    , jsaddle-warp
     , bulmex
+    -- network-uri is a depedency for bulma. HeadSettings uses types from it.
+    -- https://hackage.haskell.org/package/bulmex-4.0.0/docs/Reflex-Bulmex-Html.html#t:HeadSettings
+    -- , network-uri
     , text
     , protolude 
     , containers
@@ -30,6 +34,7 @@ executable fht-frontend
     
   other-modules: 
     Frontend.Shared
+    Frontend.Nav
     Frontend.Shared.Widgets
     Frontend.Shared.Widgets.Bulma
     Lib.Reflex.Buttons
@@ -47,6 +52,8 @@ executable fht-frontend
     TypeFamilies
     DerivingVia 
     RecordWildCards
+    PackageImports
+    ViewPatterns
 
   ghc-options:        -Wall -threaded -Wno-unused-do-bind
 
