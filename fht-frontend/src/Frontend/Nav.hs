@@ -1,13 +1,14 @@
+{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Frontend.Nav
   ( top
-  , NavEvent
   , NavSettings(..)
   , Navigation(..)
   , DispMode(..)
   )
 where
 
+import           Control.Monad.Fix              ( MonadFix )
 import           Lib.Reflex.Clicks              ( clickEvent )
 import           Lib.Reflex.Buttons             ( mkButtonConstTextClass )
 import           Data.Default.Class             ( Default(..) )
@@ -18,11 +19,9 @@ import qualified Reflex.Dom                    as RD
 import qualified "reflex-dom-helpers" Reflex.Tags
                                                as Tags
 
-type NavEvent t = RD.Event t Navigation
-
 data NavSettings t = NavSettings
-  { _navTotalPlants :: RD.Dynamic t Int
-  , _navDyn         :: RD.Dynamic t Navigation
+  { _navTotalPlants :: RD.Dynamic t Int -- ^ Current total number of plants.
+  , _navInitial     :: Navigation
   }
 
 data DispMode = ShowAll
@@ -40,35 +39,50 @@ instance Default Navigation where
 makePrisms ''Navigation
 
 -- | Create the top level navigation bar.
-top :: (RD.DomBuilder t m, RD.PostBuild t m) => NavSettings t -> m (NavEvent t)
+top
+  :: (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)
+  => NavSettings t
+  -> m (RD.Dynamic t Navigation)
 top NavSettings {..} =
-  Tags.navClass "level" $ navTopLeft _navTotalPlants >> navTopRight _navDyn
+  Tags.navClass "level" $ navTopLeft _navTotalPlants >>= navTopRight _navInitial
 
 navTopRight
-  :: (RD.DomBuilder t m, RD.PostBuild t m)
-  => RD.Dynamic t Navigation
-  -> m (RD.Event t Navigation)
-navTopRight dNav' = Tags.divClass "level-right" $ do
-  eShowAll <- levelItemClick . Tags.aDynAttr' dAll $ RD.text "All"
-  eShowDueBy <- levelItemClick . Tags.aDynAttr' dDue $ RD.text "Due"
-  eAdd <- levelItemP $ mkButtonConstTextClass "button is-success" mempty "Add"
-  pure
-    . RD.leftmost
-    $ [ eShowAll $> ChangeDisplay ShowAll
-      , eShowDueBy $> ChangeDisplay ShowDueBy
-      , eAdd $> AddNew
-      ]
+  :: (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)
+  => Navigation
+  -> RD.Event t Navigation
+  -> m (RD.Dynamic t Navigation)
+navTopRight initial eNavLeft = Tags.divClass "level-right" $ do
+  rec
+    -- event from the right of the navbar.
+    let eNavRight = RD.leftmost
+          [ eShowAll $> ChangeDisplay ShowAll
+          , eShowDueBy $> ChangeDisplay ShowDueBy
+          , eAdd $> AddNew
+          ]
+        -- the "sum" of all events from the navbar.
+        eNav = RD.leftmost [eNavLeft, eNavRight]
+        dAll = dOn $ ChangeDisplay ShowAll
+        dDue = dOn $ ChangeDisplay ShowDueBy
+        -- this is a hack. Replace with the Bulma equivalent of "disabled" etc.
+        dOn t = dNav <&> \case
+          t' | t' == t -> "style" =: "color: black;"
+          _            -> mempty
+    dNav       <- RD.holdDyn initial eNav
+
+    eShowAll   <- levelItemClick . Tags.aDynAttr' dAll $ RD.text "All"
+    eShowDueBy <- levelItemClick . Tags.aDynAttr' dDue $ RD.text "Due"
+
+    eAdd <- levelItemP $ mkButtonConstTextClass "button is-success" mempty "Add"
+
+  pure dNav
  where
   levelItemP     = Tags.pClass "level-item"
   levelItemClick = Tags.pClass "level-item" . clickEvent . fmap fst
-  dAll           = dOn $ ChangeDisplay ShowAll
-  dDue           = dOn $ ChangeDisplay ShowDueBy
-  dOn t = dNav' <&> \case
-    t' | t' == t -> "style" =: "color: black;"
-    _            -> mempty
 
 navTopLeft
-  :: (RD.DomBuilder t m, RD.PostBuild t m) => RD.Dynamic t Int -> m (NavEvent t)
+  :: (RD.DomBuilder t m, RD.PostBuild t m)
+  => RD.Dynamic t Int
+  -> m (RD.Event t Navigation)
 navTopLeft (fmap show -> totalPlants) = Tags.divClass "level-left" $ do
   -- on the left side, we want to display a total count next to a search input.
   levelItem

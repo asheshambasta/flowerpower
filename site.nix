@@ -1,7 +1,7 @@
 { system ? builtins.currentSystem
 }:
 let 
-  name = "reflex-stone";
+  name = "flowerpower";
   sources = import ./nix/sources.nix;
   rp = import sources.reflex-platform { 
     inherit system;
@@ -9,7 +9,7 @@ let
   project = import ./default.nix { inherit system; };
   pkgs = rp.nixpkgs;
   app = pkgs.lib.getAttr name project.ghcjs;
-  wwwDir = ./www;
+  wwwDir = ./fht-frontend/www;
 in 
   pkgs.runCommand "${name}-site" {} ''
     mkdir -p $out

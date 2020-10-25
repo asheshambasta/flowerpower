@@ -17,7 +17,7 @@ executable fht-frontend
     , reflex-dom
     , reflex-dom-helpers
     , jsaddle-warp
-    , bulmex
+    , bulmex == 4.0.0
     -- network-uri is a depedency for bulma. HeadSettings uses types from it.
     -- https://hackage.haskell.org/package/bulmex-4.0.0/docs/Reflex-Bulmex-Html.html#t:HeadSettings
     -- , network-uri

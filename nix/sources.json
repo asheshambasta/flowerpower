@@ -5,10 +5,10 @@
         "homepage": null,
         "owner": "asheshambasta",
         "repo": "bulmex",
-        "rev": "fbe4c932aebeb1b7d3a45abc881f4320fb529738",
-        "sha256": "1lvq9f0ny7v5idj8nxbiam5vwcivh497qqsj52zmi1bni8c4pf4q",
+        "rev": "9e78b2defef34be19792baa89da088f73c2f2980",
+        "sha256": "1sa4j2xhdmaiaqi74286k78lcrq5inawmalhczq2zv0pwlc58x5k",
         "type": "tarball",
-        "url": "https://github.com/asheshambasta/bulmex/archive/fbe4c932aebeb1b7d3a45abc881f4320fb529738.tar.gz",
+        "url": "https://github.com/asheshambasta/bulmex/archive/9e78b2defef34be19792baa89da088f73c2f2980.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "niv": {

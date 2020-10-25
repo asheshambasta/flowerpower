@@ -14,10 +14,9 @@ import           Frontend.Shared.Widgets        ( mainWidgetWithBulma )
 import           Protolude
 
 main :: IO ()
-main = mainWidgetWithBulma $ do
+main = run 3003 $ liftIO $ mainWidgetWithBulma $ do
   rec _navTotalPlants <- RD.holdDyn 0 RD.never
-      _navDyn         <- RD.holdDyn def RD.never -- navEvt
-      let navSettings = Nav.NavSettings { .. }
-      navEvt <- Nav.top navSettings
+      let navSettings = Nav.NavSettings { _navInitial = def, .. }
+      dNav <- Nav.top navSettings
   RD.elClass "div" "bar" $ RD.text "hi"
   pure ()
