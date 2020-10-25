@@ -29,14 +29,12 @@ executable fht-frontend
     , fht-api
     
   other-modules: 
-    Exercises.Ex02
-    Exercises.Ex03
-    Exercises.Shared
-    Exercises.Shared.Widgets
+    Frontend.Shared
+    Frontend.Shared.Widgets
+    Frontend.Shared.Widgets.Bulma
     Lib.Reflex.Buttons
     Lib.Reflex.Elements
     Lib.Reflex.Clicks 
-    Exercises.Shared.Widgets.Bulma
 
   default-extensions:
     DataKinds

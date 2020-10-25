@@ -58,7 +58,6 @@ maintStatuses =
     maints <- QC.pick . QC.listOf $ QC.arbitrary @P.Maintenance
     pure (logs, time, maints)
 
-
 genLogs = do
   num <- abs <$> QC.pick (QC.arbitrary @Int)
   replicateM num genLog

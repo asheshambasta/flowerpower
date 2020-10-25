@@ -1,5 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
-module Exercises.Shared.Widgets
+module Frontend.Shared.Widgets
   ( mainWidgetWithBootstrap
   , mainWidgetWithBulma
   , responsive

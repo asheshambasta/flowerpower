@@ -10,7 +10,9 @@ module Data.Garden.Plant
   , MaintenanceFreq(..)
   , Maintenance(..)
   , freqDiffTime
-  , MaintenanceStatus(..)
+  -- *** Status of maintenance.
+  -- Data constructors of MaintenanceStatus are not exported, use the Patterns instead.
+  , MaintenanceStatus
   , maintenanceStatus
   -- *** Patterns for safe construction/matches.
   , pattern DueIn
@@ -110,7 +112,7 @@ type Plant
       Text
       (Maybe Text)
       (Maybe Text)
-      Time.UTCTime
+      (Maybe Time.UTCTime)
       [MaintenanceType]
       [MaintenanceFreq]
 

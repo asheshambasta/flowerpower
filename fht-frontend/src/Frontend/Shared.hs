@@ -1,5 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
-module Exercises.Shared
+module Frontend.Shared
   ( Product(..)
   , Money(..)
   , Stock(..)
