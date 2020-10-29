@@ -18,12 +18,15 @@ library
     , lens
     , data-default-class
     , fht-data
-    -- , servant 
-    , servant-reflex == 0.3.6
+    , reflex 
+    , reflex-dom
+    , servant 
+    , servant-reflex 
     
   exposed-modules:
     Api.Garden.Plant 
   other-modules: 
+    Api.Version
 
   default-extensions:
     DataKinds
@@ -35,6 +38,7 @@ library
     GADTs 
     TypeFamilies
     DerivingVia 
+    PackageImports
     RecordWildCards
 
   ghc-options:        -Wall -threaded -Wno-unused-do-bind

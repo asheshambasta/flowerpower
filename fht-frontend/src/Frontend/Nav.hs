@@ -5,6 +5,10 @@ module Frontend.Nav
   , NavSettings(..)
   , Navigation(..)
   , DispMode(..)
+  -- * Lenses & Prisms
+  , _Search
+  , _AddNew
+  , _ChangeDisplay
   )
 where
 
@@ -74,7 +78,7 @@ navTopRight initial eNavLeft = Tags.divClass "level-right" $ do
 
     eAdd <- levelItemP $ mkButtonConstTextClass "button is-success" mempty "Add"
 
-  pure dNav
+  RD.holdUniqDyn dNav
  where
   levelItemP     = Tags.pClass "level-item"
   levelItemClick = Tags.pClass "level-item" . clickEvent . fmap fst
@@ -83,15 +87,18 @@ navTopLeft
   :: (RD.DomBuilder t m, RD.PostBuild t m)
   => RD.Dynamic t Int
   -> m (RD.Event t Navigation)
-navTopLeft (fmap show -> totalPlants) = Tags.divClass "level-left" $ do
-  -- on the left side, we want to display a total count next to a search input.
-  levelItem
-    . Tags.pClass "subtitle is-5"
-    . RD.el "strong"
-    . RD.dynText
-    $ totalPlants
+navTopLeft (fmap show -> totalPlants) =
+  Tags.divClass "level-left" $ totalPlantSummary >> searchBox
+ where
+  totalPlantSummary =
+    -- on the left side, we want to display a total count next to a search input.
+    levelItem
+      . Tags.pClass "subtitle is-5"
+      . RD.el "strong"
+      . RD.dynText
+      $ totalPlants
 
-  levelItem . Tags.divClass "field has-addons" $ do
+  searchBox = levelItem . Tags.divClass "field has-addons" $ do
     -- search input (dynamic contains the latest value of the text in the search box.)
     dSearch <- Tags.pClass "control" mkInput
     -- search button: each click is an event.
@@ -99,7 +106,7 @@ navTopLeft (fmap show -> totalPlants) = Tags.divClass "level-left" $ do
 
     let eSearch = RD.tag (RD.current dSearch) eClick
     pure $ Search <$> eSearch
- where
+
   mkButton = mkButtonConstTextClass "button" mempty "Search"
   mkInput  = RD._inputElement_value <$> RD.inputElement inputSettings
   inputSettings =

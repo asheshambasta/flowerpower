@@ -1,6 +1,7 @@
 module Lib.Reflex.Clicks
   ( clickEvent
   , clickEvent'
+  , clickEventWith
   )
 where
 
@@ -24,3 +25,10 @@ clickEvent = fmap clickEvent'
 clickEvent'
   :: (Reflex t, HasDomEvent t target 'ClickTag) => target -> Event t ()
 clickEvent' = void . domEvent Click
+
+clickEventWith
+  :: (DomBuilder t m, HasDomEvent t target 'ClickTag)
+  => value
+  -> m target
+  -> m (Event t value)
+clickEventWith value' target = clickEvent target <&> ($> value')
