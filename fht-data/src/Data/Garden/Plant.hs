@@ -1,10 +1,11 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE DeriveAnyClass #-}
 module Data.Garden.Plant
   ( Plant'(..)
   , Plant
+  , PlantId'(..)
+  , PlantId
   -- ** MaintenanceType of plants
   , MaintenanceType(..)
   , MaintenanceFreq(..)
@@ -26,6 +27,7 @@ module Data.Garden.Plant
   , maintenanceStatusesNow
   -- * Lenses
   -- ** Plant
+  , unPlantId
   , pId
   , pName
   , pDesc
@@ -43,6 +45,7 @@ module Data.Garden.Plant
   )
 where
 
+import           Web.HttpApiData                ( ToHttpApiData )
 import           Control.Lens
 import qualified Data.Map                      as M
 import           Data.Aeson
@@ -83,6 +86,13 @@ maintenanceStatus
   :: MaintenanceFreq -> Time.NominalDiffTime -> MaintenanceStatus
 maintenanceStatus f t | t < 0     = UnsafeDueIn f t
                       | otherwise = UnsafeDueBy f (Just t)
+
+newtype PlantId' id = PlantId { _unPlantId :: id }
+                 deriving (Eq, Show, ToJSON, FromJSON, ToHttpApiData) via id
+
+type PlantId = PlantId' Int64
+
+makeLenses ''PlantId'
 
 data Plant' id name desc img time maint maintFreq = Plant
   { _pId               :: id
@@ -132,6 +142,8 @@ data MaintenanceLog' maint performedDate = MaintenanceLog
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 type MaintenanceLog = MaintenanceLog' MaintenanceType Time.UTCTime
+
+type MaintenanceStatuses = M.Map MaintenanceType MaintenanceStatus
 
 makeLenses ''MaintenanceLog'
 

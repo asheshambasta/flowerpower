@@ -48,6 +48,7 @@ common common-build-depends
     , data-default-class
     , aeson
     , time
+    , http-api-data
     
 ------------------
 -- Core library --
