@@ -85,7 +85,7 @@ pattern DueIn f t <- UnsafeDueIn f t where
 pattern DueBy
   :: MaintenanceFreq -> Maybe Time.NominalDiffTime -> MaintenanceStatus
 pattern DueBy f t <- UnsafeDueBy f t where
-  DueBy f mt = maybe (DueBy f Nothing) (maintenanceStatus f) mt
+  DueBy f mt = maybe (UnsafeDueBy f Nothing) (maintenanceStatus f) mt
 
 -- | Smart constructor for maintenance statuses.
 maintenanceStatus

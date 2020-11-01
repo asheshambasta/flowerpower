@@ -8,6 +8,7 @@ module Frontend.Garden.Plant
   )
 where
 
+import           Reflex.Bulmex.Modal            ( modal )
 import           Control.Lens
 import "reflex-dom-helpers" Reflex.Tags        as Tags
 import           Frontend.Shared.Widgets.Bulma  ( sectionContainer
@@ -20,16 +21,24 @@ import           Protolude
 import           Reflex.Dom                     ( (=:) )
 import qualified Reflex.Dom                    as RD
 import           Data.Garden.Plant
-import           Lib.Reflex.Clicks              ( clickEventWith )
+import           Lib.Reflex.Clicks              ( clickEvents
+                                                , ClickType(DoubleClick)
+                                                )
 
 -- | Display a plant as a Bulma card. Events are fired on each click.
 plantCard
-  :: (RD.DomBuilder t m, RD.PostBuild t m)
+  :: (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)
   => RD.Dynamic t (Maybe FullPlantData) -- ^ A dynamic representing the currently selected plant.
   -> FullPlantData -- ^ Plant to display
   -> m (RD.Event t FullPlantData) -- ^ Event with clicked plant.
-plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) =
-  clickEventWith fpd $ fst <$> plantTile
+plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) = do
+  eClickType <- clickEvents $ fst <$> plantTile
+  -- for any kind of click, we do want this plant to be selected. 
+  let eSelected  = eClickType $> fpd
+      -- and we want to display the modal if the user has double clicked.
+      eShowModal = RD.ffilter (== DoubleClick) eClickType $> ()
+  modal eShowModal $ plantMaintenance dSelected
+  pure eSelected
  where
   plantTile =
     RD.elClass' "div" "tile is-parent"
@@ -80,20 +89,28 @@ dispPlants mInitSelected dFilter dAllPlants =
 -- Requires a dynamic indicating the currently selected plant: can be nothing if no plant is selected.
 plantMaintenance
   :: forall t m
-   . (RD.DomBuilder t m, RD.PostBuild t m)
+   . (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m)
   => RD.Dynamic t (Maybe FullPlantData)
   -> m (RD.Event t [MaintenanceLog]) -- ^ Event indicating which maintenance log(s) the user has marked completed.
-plantMaintenance dSelected = RD.dyn $ dSelected <&> \case
-  Nothing ->
-    sectionContainer
-      .  Tags.h2Class "subtitle"
-      $  RD.text "Select a plant to start."
-      $> mempty
-  Just fpd@FullPlantData {..} -> sectionContainer $ do
-    Tags.h1Class "title" . RD.text $ fpd ^. fpdPlant . pName
-    Tags.h2Class "subtitle" . RD.text $ maintenanceNeededText -- fpd ^. fpdPlant . pName
-    RD.text "" $> []
-   where
-    hasPending = containsDues _fpdMStatuses
-    maintenanceNeededText =
-      if hasPending then "You need to do some maintenance." else "All good!"
+plantMaintenance dSelected = do
+  deSelected <- showSelection
+  RD.switchHold RD.never deSelected
+ where
+  showSelection = RD.dyn $ dSelected <&> \case
+    Nothing ->
+      Tags.divClass "box"
+        .  Tags.h2Class "subtitle"
+        $  RD.text "Select a plant to start."
+        $> mempty
+    Just fpd@FullPlantData {..} -> Tags.divClass "box" $ do
+      Tags.h1Class "title" . RD.text $ fpd ^. fpdPlant . pName
+      Tags.h2Class "subtitle" . RD.text $ maintenanceNeededText -- fpd ^. fpdPlant . pName
+      displayMaints _fpdMStatuses
+     where
+      hasPending = containsDues _fpdMStatuses
+      maintenanceNeededText =
+        if hasPending then "Needs maintenance." else "All good!"
+
+displayMaints
+  :: RD.DomBuilder t m => MaintenanceStatuses -> m (RD.Event t [MaintenanceLog])
+displayMaints (toList -> maints) = undefined
