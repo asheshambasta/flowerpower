@@ -26,7 +26,7 @@ main = mainWidgetWithBulma $ do
       eSelected <- dispPlants initSelected
                               (Nav.dNavFilterPlants dNav)
                               (RD.constDyn plants)
-                -- currently selected  plant.
+                                -- currently selected  plant.
       dSelected <- RD.holdDyn initSelected (Just <$> eSelected)
   pure ()
  where
@@ -68,6 +68,10 @@ plant1 = Plant { _pId               = 1
 
 fpd0 = FullPlantData plant0 mempty
 -- fpd1 = FullPlantData plant1 mempty
-fpd1 = FullPlantData plant1 (M.singleton Pruning (DueBy Year (Just 10)))
+fpd1 = FullPlantData
+  plant1
+  (M.fromList
+    [(Pruning, DueBy Year (Just 10)), (Fertilizing, DueBy Month Nothing)]
+  )
 -- this causes the Jsaddle-warp server tp hang: the page never loads and the cabal process needs to be killed.
 -- fpd1 = FullPlantData plant1 (M.singleton Pruning (DueBy Year Nothing))

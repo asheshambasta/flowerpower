@@ -22,6 +22,9 @@ module Data.Garden.Plant
   -- *** Patterns for safe construction/matches.
   , pattern DueIn
   , pattern DueBy
+  , _UnsafeDueIn
+  , _UnsafeDueBy
+  -- , _DueBy
   -- *** Logging maintenance
   , MaintenanceLog'(..)
   , MaintenanceLog

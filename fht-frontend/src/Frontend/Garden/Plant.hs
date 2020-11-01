@@ -8,6 +8,8 @@ module Frontend.Garden.Plant
   )
 where
 
+import qualified Data.Map                      as M
+import           Lib.Reflex.Buttons
 import           Reflex.Bulmex.Modal            ( modal )
 import           Control.Lens
 import "reflex-dom-helpers" Reflex.Tags        as Tags
@@ -22,6 +24,7 @@ import           Reflex.Dom                     ( (=:) )
 import qualified Reflex.Dom                    as RD
 import           Data.Garden.Plant
 import           Lib.Reflex.Clicks              ( clickEvents
+                                                , clickEventWith
                                                 , ClickType(DoubleClick)
                                                 )
 
@@ -44,7 +47,7 @@ plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) = do
     RD.elClass' "div" "tile is-parent"
       . RD.elDynAttr "article" prodAttrs -- "tile is-child notification is-info"
       $ do
-          duesIndicator
+          duesIndicator containsDues'
           RD.elClass "p" "title" $ RD.text _pName
           when (isJust _pDesc)  desc
           when (isJust _pImage) image
@@ -58,14 +61,15 @@ plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) = do
   prodClass     = "class" =: "tile is-child notification is-info"
   -- we want to display specialised styles for plants that contain dues.
   containsDues' = containsDues statuses
-  duesIndicator
-    | containsDues' = spanI
-      "icon has-text-warning"
-      "fas fa-exclamation-triangle"
-    | otherwise = spanI "icon has-text-success" "fas fa-check-square"
-   where
-    spanI sClass' iClass' =
-      Tags.spanClass sClass' . Tags.iClass iClass' $ RD.text ""
+
+duesIndicator :: RD.DomBuilder t m => Bool -> m ()
+duesIndicator containsDues'
+  | containsDues' = spanI "icon has-text-warning" "fas fa-exclamation-triangle"
+  | otherwise     = spanI "icon has-text-success" "fas fa-check-square"
+ where
+  spanI sClass' iClass' =
+    Tags.spanClass sClass' . Tags.iClass iClass' $ RD.text ""
+
 
 -- | Display a list of dynamic plants.
 dispPlants
@@ -89,9 +93,9 @@ dispPlants mInitSelected dFilter dAllPlants =
 -- Requires a dynamic indicating the currently selected plant: can be nothing if no plant is selected.
 plantMaintenance
   :: forall t m
-   . (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m)
+   . (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)
   => RD.Dynamic t (Maybe FullPlantData)
-  -> m (RD.Event t [MaintenanceLog]) -- ^ Event indicating which maintenance log(s) the user has marked completed.
+  -> m (RD.Event t [MaintenanceType]) -- ^ Event indicating which maintenance log(s) the user has marked completed.
 plantMaintenance dSelected = do
   deSelected <- showSelection
   RD.switchHold RD.never deSelected
@@ -112,5 +116,38 @@ plantMaintenance dSelected = do
         if hasPending then "Needs maintenance." else "All good!"
 
 displayMaints
-  :: RD.DomBuilder t m => MaintenanceStatuses -> m (RD.Event t [MaintenanceLog])
-displayMaints (toList -> maints) = undefined
+  :: forall t m
+   . (RD.DomBuilder t m, RD.MonadHold t m, MonadFix m, RD.PostBuild t m)
+  => MaintenanceStatuses
+  -> m (RD.Event t [MaintenanceType])
+displayMaints maintMap
+  | not (null maints) = do
+    dSelected <- multiSelect
+    -- todo: remove, also requires RD.PostBuild t m 
+    RD.dynText (show <$> dSelected)
+    eDone <- doneButton
+    let bSelected = RD.current dSelected
+        eSelected = RD.tag bSelected eDone
+    pure eSelected
+  | otherwise = do
+    Tags.divClass "is-success" . RD.text $ "No required maintenances found."
+    pure $ RD.never $> []
+ where
+  multiSelect =
+    Tags.divClass "select is-multiple" . Tags.selectAttr selectAttrs $ do
+      eToggled <- mapM dispMaint maints
+      RD.foldDyn toggleMaints [] $ RD.mergeWith mappend eToggled
+  maints = M.toList maintMap
+  dispMaint (mtype, mstat) =
+    let isDue = isJust $ mstat ^? _UnsafeDueBy
+    in  clickEventWith [mtype] . fmap fst . Tags.option' $ do
+          duesIndicator isDue
+          RD.text . show $ mtype
+  toggleMaints maints' cur = foldr toggleMaint cur maints'
+  -- if a maintenance is part of the list of maintenances, remove it, if it isn't add it.
+  toggleMaint maint cur | maint `elem` cur = filter (/= maint) cur
+                        | otherwise        = maint : cur
+  numMaints   = length maints
+  selectAttrs = ("multiple" =: "") <> ("size" =: show numMaints)
+  doneButton =
+    mkButtonConstTextClass "button is-success" mempty "Mark selected as done"
