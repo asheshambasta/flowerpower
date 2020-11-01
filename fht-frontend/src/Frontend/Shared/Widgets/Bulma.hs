@@ -1,19 +1,24 @@
 module Frontend.Shared.Widgets.Bulma
   ( sectionContainer
   , tileSection
+  , mkSection
   )
 where
 
+import qualified "reflex-dom-helpers" Reflex.Tags
+                                               as Tags
 import           Protolude
 import qualified Reflex.Dom                    as RD
 
 -- | https://bulma.io/documentation/layout/container/
 sectionContainer :: RD.DomBuilder t m => m a -> m a
-sectionContainer =
-  RD.elClass "section" "section" . RD.elClass "div" "container"
+sectionContainer = mkSection . Tags.divClass "container"
 
 tileSection :: RD.DomBuilder t m => m a -> m a
 tileSection =
-  RD.elClass "div" "tile is-ancestor"
-    . RD.elClass "div" "tile is-vertical is-8"
-    . RD.elClass "div" "tile"
+  Tags.divClass "tile is-ancestor"
+    . Tags.divClass "tile is-vertical is-8"
+    . Tags.divClass "tile"
+
+mkSection :: RD.DomBuilder t m => m a -> m a
+mkSection = Tags.sectionClass "section"

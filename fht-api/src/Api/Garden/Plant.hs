@@ -33,27 +33,28 @@ import           Api.Version                    ( ApiV1 )
 type PlantIdQueryParam = QueryParam "plant_id" Plant.PlantId
 
 -- | Api for top level actions on plants. 
-type PlantApi = ApiV1 :> "plants" :> ( QueryParam "name" Text :> Get '[JSON] [Plant.Plant]
+type PlantApi = ApiV1 :> "plants" :> ( QueryParam "name" Text :> Get '[JSON] [Plant.FullPlantData]
                                      -- add a new plant 
-                                       :<|> ReqBody '[JSON] Plant.Plant :> Post '[JSON] Plant.Plant
+                                       :<|> ReqBody '[JSON] Plant.Plant :> Post '[JSON] Plant.FullPlantData
                                      -- update an existing plant.
-                                       :<|> ReqBody '[JSON] Plant.Plant :> Put '[JSON] Plant.Plant
+                                       :<|> ReqBody '[JSON] Plant.Plant :> Put '[JSON] Plant.FullPlantData
                                        :<|> PerIdApi
                                      )
 
 -- | Per plant api.
 type PerIdApi = PlantIdQueryParam :> ReqBody '[JSON] [Plant.MaintenanceLog] :> Put '[JSON] Plant.MaintenanceLog
-                 :<|> PlantIdQueryParam :> Delete '[JSON] Plant.Plant
+                 :<|> PlantIdQueryParam :> DeleteNoContent '[JSON] NoContent
 
 type ListPlants t m
   =  RD.Dynamic t (QParam Text)
   -> RD.Event t ()
-  -> m (RD.Event t (ReqResult () [Plant.Plant]))
+  -> m (RD.Event t (ReqResult () [Plant.FullPlantData]))
 
 type CreatePlant t m
   =  RD.Dynamic t (Either Text Plant.Plant)
   -> RD.Event t ()
-  -> m (RD.Event t (ReqResult () Plant.Plant))
+  -> m (RD.Event t (ReqResult () Plant.FullPlantData))
+
 type UpdatePlant t m = CreatePlant t m
 
 type AddLog t m
@@ -65,7 +66,7 @@ type AddLog t m
 type DeletePlant t m
   =  RD.Dynamic t (QParam Plant.PlantId)
   -> RD.Event t ()
-  -> m (RD.Event t (ReqResult () Plant.Plant))
+  -> m (RD.Event t (ReqResult () NoContent))
 
 -- | Convenience for creating client functions for some t and m 
 plantApiClient

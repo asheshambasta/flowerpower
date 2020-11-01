@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Frontend.Nav
@@ -5,6 +6,8 @@ module Frontend.Nav
   , NavSettings(..)
   , Navigation(..)
   , DispMode(..)
+  -- * Navigation related functions
+  , dNavFilterPlants
   -- * Lenses & Prisms
   , _Search
   , _AddNew
@@ -12,12 +15,16 @@ module Frontend.Nav
   )
 where
 
+import qualified Data.Text                     as T
+import qualified Data.Text.Internal.Search     as T
+import qualified Data.Map                      as M
+import           Data.Garden.Plant
 import           Control.Monad.Fix              ( MonadFix )
 import           Lib.Reflex.Clicks              ( clickEvent )
 import           Lib.Reflex.Buttons             ( mkButtonConstTextClass )
 import           Data.Default.Class             ( Default(..) )
 import           Control.Lens
-import           Protolude
+import           Protolude               hiding ( to )
 import           Reflex.Dom                     ( (=:) )
 import qualified Reflex.Dom                    as RD
 import qualified "reflex-dom-helpers" Reflex.Tags
@@ -123,3 +130,17 @@ navTopLeft (fmap show -> totalPlants) =
 
 levelItem :: RD.DomBuilder t m => m a -> m a
 levelItem = Tags.divClass "level-item"
+
+dNavFilterPlants
+  :: RD.Reflex t
+  => RD.Dynamic t Navigation
+  -> RD.Dynamic t (FullPlantData -> Bool)
+dNavFilterPlants dNav = dNav <&> \case
+  ChangeDisplay ShowDueBy ->
+    \FullPlantData { _fpdMStatuses = statuses } -> containsDues statuses
+  Search (clean -> needle) | not (T.null needle) -> \fpd ->
+    let haystack = fpd ^. fpdPlant . pName . to clean
+        ixs      = T.indices needle haystack
+    in  not . null $ ixs
+  _ -> const True
+  where clean = T.toLower . T.strip

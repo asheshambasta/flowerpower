@@ -6,6 +6,7 @@ module Data.Garden.Plant
   , Plant
   , PlantId'(..)
   , PlantId
+  , FullPlantData(..)
   -- ** MaintenanceType of plants
   , MaintenanceType(..)
   , MaintenanceFreq(..)
@@ -15,6 +16,9 @@ module Data.Garden.Plant
   -- Data constructors of MaintenanceStatus are not exported, use the Patterns instead.
   , MaintenanceStatus
   , maintenanceStatus
+  , MaintenanceStatuses
+  , containsDues
+  , filterDues
   -- *** Patterns for safe construction/matches.
   , pattern DueIn
   , pattern DueBy
@@ -36,6 +40,8 @@ module Data.Garden.Plant
   , pMaintenanceTypes
   , pMaintenanceFreqs
   , pMaintenances
+  , fpdPlant
+  , fpdMStatuses
   -- ** Maintenance
   , mFreq
   , mType
@@ -53,7 +59,7 @@ import qualified Data.Time                     as Time
 import           Protolude
 
 data MaintenanceType = Pruning | Fertilizing | Repotting
-                 deriving (Eq, Show, Enum, Ord, Bounded, Generic, ToJSON, FromJSON)
+                 deriving (Eq, Show, Enum, Ord, Bounded, Generic, ToJSON, ToJSONKey, FromJSON, FromJSONKey)
 
 data MaintenanceFreq = Week | Month | Year
                      deriving (Eq, Show, Enum, Ord, Bounded, Generic, ToJSON, FromJSON)
@@ -145,6 +151,14 @@ type MaintenanceLog = MaintenanceLog' MaintenanceType Time.UTCTime
 
 type MaintenanceStatuses = M.Map MaintenanceType MaintenanceStatus
 
+-- | Check if a map contains at least 1 due status.
+containsDues :: MaintenanceStatuses -> Bool
+containsDues = (/= M.empty) . filterDues
+
+-- | Get all the due statuses. 
+filterDues :: MaintenanceStatuses -> MaintenanceStatuses
+filterDues = M.filter (isJust . preview _UnsafeDueBy)
+
 makeLenses ''MaintenanceLog'
 
 -- | Get the report of the latest maintenances.
@@ -168,7 +182,7 @@ maintenanceStatuses
   => [Maintenance] -- ^ List of maintenances to perform.
   -> f MaintenanceLog -- ^ Log of all performed maintenances. 
   -> Time.UTCTime -- ^ The time at which to determine due maintenances.
-  -> M.Map MaintenanceType MaintenanceStatus -- ^ Map containing all maintenance types and the difference of time since the last time they were performed.
+  -> MaintenanceStatuses -- ^ Map containing all maintenance types and the difference of time since the last time they were performed.
 maintenanceStatuses maints (latestMaintenances -> latest) atTime = foldl'
   determineStatus
   mempty
@@ -190,6 +204,15 @@ maintenanceStatusesNow
   :: (MonadIO m, Foldable f)
   => [Maintenance]
   -> f MaintenanceLog
-  -> m (M.Map MaintenanceType MaintenanceStatus)
+  -> m MaintenanceStatuses
 maintenanceStatusesNow maints log' =
   maintenanceStatuses maints log' <$> liftIO Time.getCurrentTime
+
+-- | Full plant data: contains information about the plant as well its maintenance statuses.
+data FullPlantData = FullPlantData
+  { _fpdPlant     :: Plant
+  , _fpdMStatuses :: MaintenanceStatuses
+  }
+  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+makeLenses ''FullPlantData
