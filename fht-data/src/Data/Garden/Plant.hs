@@ -18,6 +18,7 @@ module Data.Garden.Plant
   , maintenanceStatus
   , MaintenanceStatuses
   , containsDues
+  , isDue
   , filterDues
   -- *** Patterns for safe construction/matches.
   , pattern DueIn
@@ -160,7 +161,10 @@ containsDues = (/= M.empty) . filterDues
 
 -- | Get all the due statuses. 
 filterDues :: MaintenanceStatuses -> MaintenanceStatuses
-filterDues = M.filter (isJust . preview _UnsafeDueBy)
+filterDues = M.filter isDue
+
+isDue :: MaintenanceStatus -> Bool
+isDue = isJust . preview _UnsafeDueBy
 
 makeLenses ''MaintenanceLog'
 

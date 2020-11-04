@@ -22,16 +22,16 @@ import           Protolude
 main :: IO ()
 main = mainWidgetWithBulma $ do
   rec dNav      <- navBar (RD.constDyn . length $ plants)
-      eAddLogs  <- sectionContainer . plantMaintenance $ dSelected
+      eAddLogs  <- sectionContainer . plantMaintenance dSelected $ Summary
       eSelected <- dispPlants initSelected
                               (Nav.dNavFilterPlants dNav)
                               (RD.constDyn plants)
-                                -- currently selected  plant.
+                                        -- currently selected  plant.
       dSelected <- RD.holdDyn initSelected (Just <$> eSelected)
   pure ()
  where
   plants       = [fpd0, fpd1]
-  initSelected = headMay plants
+  initSelected = Nothing -- headMay plants
 
 navBar
   :: (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)

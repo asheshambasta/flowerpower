@@ -2,6 +2,9 @@ module Frontend.Shared.Widgets.Bulma
   ( sectionContainer
   , tileSection
   , mkSection
+  , spanI
+  , spanIEmpty
+  , box
   )
 where
 
@@ -22,3 +25,16 @@ tileSection =
 
 mkSection :: RD.DomBuilder t m => m a -> m a
 mkSection = Tags.sectionClass "section"
+
+spanI :: RD.DomBuilder t m => Text -> Text -> m a -> m a
+spanI sClass' iClass' = Tags.spanClass sClass' . Tags.iClass iClass'
+
+spanIEmpty :: RD.DomBuilder t m => Text -> Text -> m ()
+spanIEmpty sClass' iClass' =
+  Tags.spanClass sClass' . Tags.iClass iClass' $ RD.text ""
+
+box :: RD.DomBuilder t m => m a -> m b -> m (a, b)
+box title subtitle = Tags.divClass "box" $ do
+  t <- Tags.h1Class "title" title
+  s <- Tags.h2Class "subtitle" subtitle
+  pure (t, s)
