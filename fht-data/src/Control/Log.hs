@@ -76,10 +76,10 @@ runLoggingIO
   => Sem (Logging ': r) a
   -> Sem r a
 runLoggingIO = interpret \case
-  Debug    msg -> withLogger msg L.debug'
-  Info     msg -> withLogger msg L.info'
-  Warn     msg -> withLogger msg L.warning'
-  Critical msg -> withLogger msg L.critical'
+  Debug    msg -> msg `withLogger` L.debug'
+  Info     msg -> msg `withLogger` L.info'
+  Warn     msg -> msg `withLogger` L.warning'
+  Critical msg -> msg `withLogger` L.critical'
 
 withLogger
   :: forall a r
