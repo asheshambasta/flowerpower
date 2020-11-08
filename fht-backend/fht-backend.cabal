@@ -11,18 +11,33 @@ extra-source-files: README.org
 executable fht-backend
   hs-source-dirs:     src
   build-depends:
-      base
+      base-noprelude 
     , text
     , protolude 
     , containers
     , lens
     , data-default-class
+    -- dependencies from within the project.
     , fht-data 
     , fht-api
+    -- Servant stuff.
+    , servant 
+    , servant-server 
+    -- Effects
+    , polysemy
+    -- DB related
+    , opaleye
+    , resource-pool 
+    , postgresql-simple 
+    , product-profunctors 
+    , monad-log 
+    -- generate ids
+    , snowflake 
     
   main-is: Main.hs
     
   other-modules: 
+    Backend.Garden.Plant 
 
   default-extensions:
     DataKinds
@@ -35,6 +50,8 @@ executable fht-backend
     TypeFamilies
     DerivingVia 
     RecordWildCards
+    PackageImports
+    ViewPatterns
 
   ghc-options:        -Wall -threaded -Wno-unused-do-bind
 

@@ -56,6 +56,7 @@ executable fht-frontend
     RecordWildCards
     PackageImports
     ViewPatterns
+    StrictData
 
   ghc-options:        -Wall -threaded -Wno-unused-do-bind
 

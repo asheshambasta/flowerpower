@@ -11,12 +11,7 @@ where
 import qualified Data.Map                      as M
 import           Lib.Reflex.Buttons
 import           Control.Lens
-import           Frontend.Shared.Widgets.Bulma  ( sectionContainer
-                                                , tileSection
-                                                , mkSection
-                                                , spanIEmpty
-                                                , box
-                                                )
+import qualified Frontend.Shared.Widgets.Bulma as Bw
 import           Control.Monad.Fix              ( MonadFix )
 import           Lib.Reflex.Elements            ( emptyEl )
 import           Protolude               hiding ( to )
@@ -28,6 +23,8 @@ import           Lib.Reflex.Clicks              ( clickEvents
                                                 , ClickType(DoubleClick)
                                                 )
 import "bulmex"  Reflex.Bulmex.Modal            ( modal )
+import qualified "bulmex" Reflex.Bulmex.Tag.Bulma
+                                               as BTags
 import "reflex-dom-helpers" Reflex.Tags        as Tags
 
 data MaintBoxMode = Modal | Summary
@@ -69,9 +66,9 @@ plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) = do
 
 duesIndicator :: RD.DomBuilder t m => Bool -> m ()
 duesIndicator containsDues'
-  | containsDues' = spanIEmpty "icon has-text-warning"
-                               "fas fa-exclamation-triangle"
-  | otherwise = spanIEmpty "icon has-text-success" "fas fa-check-square"
+  | containsDues' = Bw.spanIEmpty "icon has-text-warning"
+                                  "fas fa-exclamation-triangle"
+  | otherwise = Bw.spanIEmpty "icon has-text-success" "fas fa-check-square"
 
 -- | Display a list of dynamic plants.
 dispPlants
@@ -82,7 +79,7 @@ dispPlants
   -> RD.Dynamic t [FullPlantData] -- ^ Current list of plants 
   -> m (RD.Event t FullPlantData) -- ^ Event with the selected plant.
 dispPlants mInitSelected dFilter dAllPlants =
-  sectionContainer . tileSection $ do
+  Bw.sectionContainer . Bw.tileSection $ do
     rec dSelectedPlant <- RD.holdDyn mInitSelected (Just <$> ePlant)
         ePlants        <- fmap RD.leftmost
           <$> RD.dyn (dePlants' dSelectedPlant dFilter dAllPlants)
@@ -114,11 +111,11 @@ plantMaintenance dSelected mode = do
  where
   showSelection = RD.dyn $ dSelected <&> \case
     Nothing ->
-      box (RD.text "Welcome to Flowerpower!")
-          (RD.text "Select a plant to start.")
+      Bw.box (RD.text "Welcome to Flowerpower!")
+             (RD.text "Select a plant to start.")
         $> mempty
     Just fpd@FullPlantData {..} -> Tags.divClass "box" $ do
-      box title subtitle
+      Bw.box title subtitle
       case mode of
         Modal   -> displayMaints _fpdMStatuses
         Summary -> pure RD.never
@@ -128,9 +125,10 @@ plantMaintenance dSelected mode = do
         if hasPending then "Needs maintenance." else "All good!"
       title = do
         RD.text $ fpd ^. fpdPlant . pName
-        Tags.divClass "buttons" $ do
-          RD.elClass' "button" "button"
-            $ spanIEmpty "icon is-small" "fa fa-pencil"
+        BTags.buttons $ do
+          -- edit button 
+          Bw.faButton "fa fa-sliders"
+          Bw.faButton "fa fa-trash"
       subtitle = RD.text maintenanceNeededText -- fpd ^. fpdPlant . pName
 
 displayMaints

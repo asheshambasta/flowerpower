@@ -5,6 +5,7 @@ module Frontend.Shared.Widgets.Bulma
   , spanI
   , spanIEmpty
   , box
+  , faButton
   )
 where
 
@@ -38,3 +39,10 @@ box title subtitle = Tags.divClass "box" $ do
   t <- Tags.h1Class "title" title
   s <- Tags.h2Class "subtitle" subtitle
   pure (t, s)
+
+-- | Create a button with a font-awesome icon.
+faButton
+  :: RD.DomBuilder t m
+  => Text
+  -> m (RD.Element RD.EventResult (RD.DomBuilderSpace m) t, ())
+faButton = RD.elClass' "button" "button" . spanIEmpty "icon is-small"

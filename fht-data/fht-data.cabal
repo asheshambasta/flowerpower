@@ -49,6 +49,9 @@ common common-build-depends
     , aeson
     , time
     , http-api-data
+    , http-types
+    , monad-log
+    , polysemy
     
 ------------------
 -- Core library --
@@ -63,6 +66,8 @@ library
   hs-source-dirs:     src
   exposed-modules:
     Data.Garden.Plant
+    Control.Error
+    Control.Log
   other-modules: 
   
 -----------
