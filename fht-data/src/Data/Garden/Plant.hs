@@ -60,7 +60,6 @@ import           Control.Lens
 import qualified Data.Map                      as M
 import           Data.Aeson
 import qualified Data.Time                     as Time
-import           Protolude
 
 data MaintenanceType = Pruning | Fertilizing | Repotting
                  deriving (Eq, Show, Enum, Ord, Bounded, Generic, ToJSON, ToJSONKey, FromJSON, FromJSONKey)

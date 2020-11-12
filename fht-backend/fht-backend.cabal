@@ -13,7 +13,7 @@ executable fht-backend
   build-depends:
       base-noprelude 
     , text
-    , protolude 
+    , prelude-polysemy
     , containers
     , lens
     , data-default-class
@@ -42,7 +42,6 @@ executable fht-backend
   default-extensions:
     DataKinds
     FlexibleContexts
-    NoImplicitPrelude
     LambdaCase
     OverloadedStrings
     ScopedTypeVariables

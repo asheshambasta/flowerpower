@@ -35,8 +35,10 @@ in rp.project ({ pkgs, ... }: {
   with sources; {
     bulmex = self.callCabal2nix "bulmex" "${bulmex}/bulmex" { };
     servant-reflex = self.callCabal2nix "servant-reflex" servant-reflex { };
+    # prelude-polysemy = import sources.prelude-polysemy;
+    prelude-polysemy = self.callCabal2nix "prelude-polysemy" prelude-polysemy {};
     reflex-dom-helpers =
-    self.callCabal2nix "reflex-dom-helpers" reflex-dom-helpers { };
+      self.callCabal2nix "reflex-dom-helpers" reflex-dom-helpers { };
   };
 
 })
