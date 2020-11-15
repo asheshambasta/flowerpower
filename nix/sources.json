@@ -26,7 +26,7 @@
     "dbstorage-polysemy": {
         "ref": "master",
         "repo": "git@github.com:asheshambasta/dbstorage-polysemy",
-        "rev": "231a167f6f6d86bb13ae378780ae649a11ae4b07",
+        "rev": "024776b8e507341f67d97e968716c5fe0c92ac5c",
         "type": "git"
     },
     "niv": {
@@ -56,7 +56,7 @@
     "prelude-polysemy": {
         "ref": "master",
         "repo": "git@github.com:asheshambasta/prelude-polysemy",
-        "rev": "c9b05d06ab71f00b820f74fe795cd38c76bd6a1f",
+        "rev": "21974aad0e5f08f825bfc8e63c23718e3fc4d867",
         "type": "git"
     },
     "reflex-dom-helpers": {

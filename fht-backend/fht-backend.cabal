@@ -24,6 +24,8 @@ executable fht-backend
     -- Servant stuff.
     , servant 
     , servant-server 
+    , warp
+
     -- Effects
     , polysemy
     , arrows
@@ -38,10 +40,15 @@ executable fht-backend
     -- generate ids
     , snowflake 
     
+    , optparse-applicative
+    
   main-is: Main.hs
     
   other-modules: 
+
     Backend.Garden.Plant 
+    Backend.Garden.Plant.Types
+
     Backend.Runtime
     -- API modules
     Backend.Api.Garden.Plant

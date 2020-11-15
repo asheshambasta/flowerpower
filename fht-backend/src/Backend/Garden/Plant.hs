@@ -12,13 +12,23 @@ module Backend.Garden.Plant
   , StoredPlant
   , DBUpdate(AddPlant, DeletePlant)
   , DBSelect(SearchByName, GetAllPlants)
+  -- * Getting data
+  , populatePlantData
   )
 where
 
+import           Backend.Garden.Plant.Types     ( PlantIdF
+                                                , PlantStorageErr(..)
+                                                )
+import           Polysemy.Error                as E
+import "prelude-polysemy" Prelude.Control.Error
+                                               as Err
 import           Data.Aeson
 import           Prelude                 hiding ( to )
 import           Control.Lens            hiding ( ilike )
-import           Control.Arrow                  ( returnA )
+import           Control.Arrow                  ( returnA
+                                                , (>>^)
+                                                )
 import           Data.Profunctor.Product.TH     ( makeAdaptorAndInstance' )
 import           Opaleye
 import "fht-api" Api.Garden.Plant
@@ -30,13 +40,12 @@ newtype StoredPlant' p = StoredPlant { _unStoredPlant :: p }
                        deriving (Eq, Show, ToJSON, FromJSON) via p
 
 makeAdaptorAndInstance' ''StoredPlant'
+makeLenses ''StoredPlant'
 
 -- | Hask side of a stored plant.
 type StoredPlant = StoredPlant' Plant
 
 type StoredPlantF = StoredPlant' PlantF
-
-type PlantIdF = PlantId' (Field PGInt8)
 
 type PlantF
   = Plant'
@@ -54,6 +63,8 @@ instance DBIdentity StoredPlant where
 
 instance DBStorage StoredPlant where
 
+  type UpdateConstraints StoredPlant = '[E.Error Err.KnownError]
+
   type DBError StoredPlant = Void
   
   data DBSelect StoredPlant = SearchByName Text
@@ -69,8 +80,27 @@ instance DBStorage StoredPlant where
     GetAllPlants      -> mkIdMap <$> trSelect allPlantsQ
 
   dbUpdate = \case
-    AddPlant    p  -> undefined
-    DeletePlant id -> undefined
+    AddPlant p@Plant {..} -> selectExistingId
+      >>= maybe insertRow (Err.throwKnownError . AlreadyExists)
+     where
+      selectExistingId = headMay <$> trSelect
+        (proc () -> (byIdsQ >>^ view (unStoredPlant . pId)) -< [_pId])
+      insertRow = trInsertManyReturning plantTable
+                                        [toFields $ StoredPlant p]
+                                        (view $ unStoredPlant . pId)
+
+    DeletePlant id -> trDeleteReporting
+      id
+      plantTable
+      (view $ unStoredPlant . pId . to (.=== constant id))
+
+-- | Get full plant data
+-- TODO: implement
+populatePlantData
+  :: (Foldable f, Functor f, SelectOf StoredPlant r)
+  => f Plant
+  -> Sem r (f FullPlantData)
+populatePlantData plants = pure $ (`FullPlantData` mempty) <$> plants
 
 plantTable :: Table StoredPlantF StoredPlantF
 plantTable = table "plant" . pStoredPlant . StoredPlant . pPlant $ Plant
