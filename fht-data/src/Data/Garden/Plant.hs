@@ -52,10 +52,22 @@ module Data.Garden.Plant
   -- ** MaintenanceLog
   , mlMaintenance
   , mlTimePerformed
+  -- * DB
+  -- ** Enums
+  , PGMaintenanceType
+  , PGMaintenanceFreq
+  -- ** Profunctor
+  , pPlantId
+  , pPlant
+  , pMaintenanceLog
   )
 where
 
-import           Web.HttpApiData                ( ToHttpApiData )
+import           Composite.Opaleye.TH           ( deriveOpaleyeEnum )
+import           Data.Profunctor.Product.TH     ( makeAdaptorAndInstance' )
+import           Web.HttpApiData                ( ToHttpApiData
+                                                , FromHttpApiData
+                                                )
 import           Control.Lens
 import qualified Data.Map                      as M
 import           Data.Aeson
@@ -64,8 +76,12 @@ import qualified Data.Time                     as Time
 data MaintenanceType = Pruning | Fertilizing | Repotting
                  deriving (Eq, Show, Enum, Ord, Bounded, Generic, ToJSON, ToJSONKey, FromJSON, FromJSONKey)
 
+deriveOpaleyeEnum ''MaintenanceType "maintenance_type" (Just . identity)
+
 data MaintenanceFreq = Week | Month | Year
                      deriving (Eq, Show, Enum, Ord, Bounded, Generic, ToJSON, FromJSON)
+
+deriveOpaleyeEnum ''MaintenanceFreq "maintenance_freq" (Just . identity)
 
 -- | Get the difftime by frequency.
 freqDiffTime :: MaintenanceFreq -> Time.NominalDiffTime
@@ -97,11 +113,12 @@ maintenanceStatus f t | t < 0     = UnsafeDueIn f t
                       | otherwise = UnsafeDueBy f (Just t)
 
 newtype PlantId' id = PlantId { _unPlantId :: id }
-                 deriving (Eq, Show, ToJSON, FromJSON, ToHttpApiData) via id
+                 deriving (Eq, Show, ToJSON, FromJSON, ToHttpApiData, FromHttpApiData, Ord) via id
 
 type PlantId = PlantId' Int64
 
 makeLenses ''PlantId'
+makeAdaptorAndInstance' ''PlantId'
 
 data Plant' id name desc img time maint maintFreq = Plant
   { _pId               :: id
@@ -115,6 +132,7 @@ data Plant' id name desc img time maint maintFreq = Plant
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 makeLenses ''Plant'
+makeAdaptorAndInstance' ''Plant'
 
 pMaintenances :: Lens' Plant [Maintenance]
 pMaintenances = lens from' to'
@@ -127,7 +145,7 @@ pMaintenances = lens from' to'
 
 type Plant
   = Plant'
-      Int64
+      PlantId
       Text
       (Maybe Text)
       (Maybe Text)
@@ -153,6 +171,8 @@ data MaintenanceLog' maint performedDate = MaintenanceLog
 type MaintenanceLog = MaintenanceLog' MaintenanceType Time.UTCTime
 
 type MaintenanceStatuses = M.Map MaintenanceType MaintenanceStatus
+
+makeAdaptorAndInstance' ''MaintenanceLog'
 
 -- | Check if a map contains at least 1 due status.
 containsDues :: MaintenanceStatuses -> Bool

@@ -15,6 +15,7 @@ executable fht-backend
     , text
     , prelude-polysemy
     , containers
+    , aeson
     , lens
     , data-default-class
     -- dependencies from within the project.
@@ -25,7 +26,10 @@ executable fht-backend
     , servant-server 
     -- Effects
     , polysemy
+    , arrows
+
     -- DB related
+    , dbstorage-polysemy
     , opaleye
     , resource-pool 
     , postgresql-simple 
@@ -38,6 +42,9 @@ executable fht-backend
     
   other-modules: 
     Backend.Garden.Plant 
+    Backend.Runtime
+    -- API modules
+    Backend.Api.Garden.Plant
 
   default-extensions:
     DataKinds
@@ -52,7 +59,7 @@ executable fht-backend
     PackageImports
     ViewPatterns
 
-  ghc-options:        -Wall -threaded -Wno-unused-do-bind
+  ghc-options:        -Wall -threaded -Wno-unused-do-bind -flate-specialise -fspecialise-aggressively
 
   if impl(ghcjs -any)
     ghc-options: -dedupe

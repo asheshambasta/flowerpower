@@ -12,6 +12,8 @@ common common-default-extensions
   default-extensions:
     DataKinds
     FlexibleContexts
+    FlexibleInstances 
+    MultiParamTypeClasses
     LambdaCase
     OverloadedStrings
     ScopedTypeVariables
@@ -51,6 +53,10 @@ common common-build-depends
     , http-types
     , monad-log
     , polysemy
+    
+    -- DB Support
+    , product-profunctors
+    , composite-opaleye
     
 ------------------
 -- Core library --

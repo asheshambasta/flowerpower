@@ -11,6 +11,24 @@
         "url": "https://github.com/asheshambasta/bulmex/archive/9e78b2defef34be19792baa89da088f73c2f2980.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "composite": {
+        "branch": "develop",
+        "description": "Integrations with Vinyl/Frames records.",
+        "homepage": "",
+        "owner": "ConferOpenSource",
+        "repo": "composite",
+        "rev": "743e90f6c090e4175662c3da1386fe2d921a5283",
+        "sha256": "01x4jmxcg9znnaprr03961s2djdhb6w9d1fasvrhgvn8ybgymykx",
+        "type": "tarball",
+        "url": "https://github.com/ConferOpenSource/composite/archive/743e90f6c090e4175662c3da1386fe2d921a5283.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "dbstorage-polysemy": {
+        "ref": "master",
+        "repo": "git@github.com:asheshambasta/dbstorage-polysemy",
+        "rev": "231a167f6f6d86bb13ae378780ae649a11ae4b07",
+        "type": "git"
+    },
     "niv": {
         "branch": "master",
         "description": "Easy dependency management for Nix projects",
@@ -38,7 +56,7 @@
     "prelude-polysemy": {
         "ref": "master",
         "repo": "git@github.com:asheshambasta/prelude-polysemy",
-        "rev": "af662fce7d63b0be3d984aba861c01bef530c7b6",
+        "rev": "c9b05d06ab71f00b820f74fe795cd38c76bd6a1f",
         "type": "git"
     },
     "reflex-dom-helpers": {
@@ -75,6 +93,18 @@
         "sha256": "0g5nm2n004r6iais710azvqncw9j15zhvc8gr4w4hxrkf759fc9q",
         "type": "tarball",
         "url": "https://github.com/asheshambasta/servant-reflex/archive/a1edb7565451c2e4cf442c38a2f50e49c0b5707f.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "vinyl": {
+        "branch": "master",
+        "description": "Extensible Records for Haskell. Pull requests welcome! Come visit us on #vinyl on freenode.",
+        "homepage": "http://hackage.haskell.org/package/vinyl",
+        "owner": "VinylRecords",
+        "repo": "vinyl",
+        "rev": "ebd5909fc6b7529a05b314314b93a8e1938fb316",
+        "sha256": "117k9ll9k728mh7xi0q0vfpdlvlpgmdwnjra0xw6dnl8xv106z7d",
+        "type": "tarball",
+        "url": "https://github.com/VinylRecords/vinyl/archive/ebd5909fc6b7529a05b314314b93a8e1938fb316.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }

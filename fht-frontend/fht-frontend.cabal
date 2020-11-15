@@ -46,6 +46,8 @@ executable fht-frontend
   default-extensions:
     DataKinds
     FlexibleContexts
+    FlexibleInstances
+    MultiParamTypeClasses
     NoImplicitPrelude
     LambdaCase
     OverloadedStrings
