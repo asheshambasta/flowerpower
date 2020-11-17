@@ -46,8 +46,8 @@ sem2Handler rt@Runtime {..} sem =
         pure eRes
   in  Handler $ undefined
  where
-  runToIO sem =
-    sem
+  runToIO sem' =
+    sem'
       & runError
       & Polysemy.Reader.runReader _rLogger
       & Polysemy.Reader.runReader _rDBRuntime
