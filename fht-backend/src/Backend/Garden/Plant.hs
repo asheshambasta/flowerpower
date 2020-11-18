@@ -104,8 +104,8 @@ populatePlantData plants = pure $ (`FullPlantData` mempty) <$> plants
 
 plantTable :: Table StoredPlantF StoredPlantF
 plantTable = table "plant" . pStoredPlant . StoredPlant . pPlant $ Plant
-  { _pId               = pPlantId . PlantId . tableField $ "id"
-  , _pName             = tableField "name"
+  { _pId               = pPlantId . PlantId . tableField $ "plant_id"
+  , _pName             = tableField "plant_name"
   , _pDesc             = tableField "description"
   , _pImage            = tableField "image"
   , _pTimePlanted      = tableField "time_planted"

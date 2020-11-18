@@ -1,8 +1,10 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE StandaloneDeriving #-}
 module Backend.Runtime
   ( module DB
   , module L
+  , Conf(..)
   , Runtime(..)
   , RuntimeError(..)
   , confP
@@ -30,7 +32,27 @@ data Runtime = Runtime
   }
 
 confP :: A.Parser Conf
-confP = undefined
+confP = do
+  _cDBConf          <- DB.dbConfP
+  _cLogLevel        <- parseLogLevel
+  _cApplicationName <- parseAppName
+  pure Conf { .. }
+ where
+  parseAppName = A.strOption
+    (  A.long "application-name"
+    <> A.short 'N'
+    <> A.help "Application name"
+    <> A.value "Flowerpower"
+    <> A.showDefault
+    )
+  parseLogLevel = A.option
+    (A.eitherReader readEither)
+    (  A.long "log-level"
+    <> A.short 'L'
+    <> A.help "Logging level for the application"
+    <> A.value L.levelDebug
+    <> A.showDefault
+    )
 
 conf2Runtime :: Conf -> IO (Either RuntimeError Runtime)
 conf2Runtime _rConf@Conf {..} = do
