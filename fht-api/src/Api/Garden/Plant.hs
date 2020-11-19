@@ -19,7 +19,11 @@ module Api.Garden.Plant
   , plantApiClient
   -- * Re-exports
   , BaseUrl(..)
+  , QParam(..)
   , Scheme(..)
+  , ReqResult(..)
+  , (:<|>)
+  , reqSuccess, reqFailure, reqTag 
   )
 where
 

@@ -113,7 +113,7 @@ maintenanceStatus f t | t < 0     = UnsafeDueIn f t
                       | otherwise = UnsafeDueBy f (Just t)
 
 newtype PlantId' id = PlantId { _unPlantId :: id }
-                 deriving (Eq, Show, ToJSON, FromJSON, ToHttpApiData, FromHttpApiData, Ord) via id
+                 deriving (Eq, Show, ToJSON, FromJSON, ToHttpApiData, FromHttpApiData, Ord, Num) via id
 
 type PlantId = PlantId' Int64
 

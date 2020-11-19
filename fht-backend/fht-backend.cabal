@@ -25,6 +25,8 @@ executable fht-backend
     , servant 
     , servant-server 
     , warp
+    , wai
+    , wai-extra
 
     -- Effects
     , polysemy

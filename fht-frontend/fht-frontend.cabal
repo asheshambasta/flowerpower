@@ -28,6 +28,7 @@ executable fht-frontend
     , data-default-class
     , time 
     , witherable
+    , servant 
     -- the frontend needs the data types. 
     , fht-data
     -- and the API for client functions.

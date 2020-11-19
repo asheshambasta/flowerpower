@@ -4,6 +4,8 @@ module Main
   )
 where
 
+import "servant" Servant.API
+import qualified "fht-api" Api.Garden.Plant    as Api
 import qualified Data.Map                      as M
 import           Frontend.Shared.Widgets.Bulma  ( sectionContainer
                                                 , tileSection
@@ -21,17 +23,33 @@ import           Protolude
 
 main :: IO ()
 main = mainWidgetWithBulma $ do
-  rec dNav      <- navBar (RD.constDyn . length $ plants)
+  rec dNav      <- navBar (RD.constDyn . length $ plants')
       eAddLogs  <- sectionContainer . plantMaintenance dSelected $ Summary
-      eSelected <- dispPlants initSelected
-                              (Nav.dNavFilterPlants dNav)
-                              (RD.constDyn plants)
-                                        -- currently selected  plant.
+      dPlants   <- getPlants dNav
+                                                                -- ePlants    <- listPlants dApiSearch RD.never
+      eSelected <- dispPlants initSelected (Nav.dNavFilterPlants dNav) dPlants
       dSelected <- RD.holdDyn initSelected (Just <$> eSelected)
   pure ()
  where
-  plants       = [fpd0, fpd1]
+  -- baseUrl =
+  --   RD.constDyn $ Api.BaseFullUrl Api.Http "localhost" 3000 "/v1/plants"
+  -- (listPlants :<|> create :<|> updateP :<|> _) = Api.plantApiClient baseUrl
+  plants'      = [fpd0, fpd1]
   initSelected = Nothing -- headMay plants
+
+getPlants
+  :: (RD.MonadWidget t m, RD.MonadHold t m)
+  => RD.Dynamic t Nav.Navigation
+  -> m (RD.Dynamic t [FullPlantData])
+getPlants dNav = do
+  dApiSearch   <- RD.holdDyn Api.QNone (Api.QParamSome <$> eNavSearch)
+  ePlantReqRes <- listPlants dApiSearch (RD.updated dApiSearch $> ()) -- TODO: should be leftmost of dom-loaded event as well.
+  let ePlants = RD.fmapMaybe Api.reqSuccess ePlantReqRes
+  RD.holdDyn [] ePlants
+ where
+  eNavSearch = RD.fmapMaybe (preview Nav._Search) (RD.updated dNav)
+  baseUrl = RD.constDyn $ Api.BaseFullUrl Api.Http "localhost" 3000 ""
+  (listPlants :<|> _) = Api.plantApiClient baseUrl
 
 navBar
   :: (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)

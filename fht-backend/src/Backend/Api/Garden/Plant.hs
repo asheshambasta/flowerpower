@@ -32,6 +32,8 @@ import "this"    Backend.Garden.Plant
 import "fht-data" Data.Garden.Plant
 import "fht-api" Api.Garden.Plant
 
+import           Network.Wai.Middleware.AddHeaders
+
 plantApiServerT
   :: forall r
    . Members '[Error KnownError , Transaction , Reader Logger] r
@@ -64,3 +66,4 @@ plantApiApplication
   -> Application
 plantApiApplication natTrans =
   serve (Proxy @PlantApi) (plantApiServer natTrans)
+    & addHeaders [("access-control-allow-origin", "*")]

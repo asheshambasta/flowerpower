@@ -1,0 +1,5 @@
+:host = http://localhost:3000
+
+# List plants
+:search = fo
+GET :host/v1/plants?name=:search
