@@ -24,6 +24,7 @@ import "dbstorage-polysemy" Database.Storage
 import           Servant.API
 import           Servant.Server
 import           Backend.Garden.Plant
+import           Backend.Garden.Plant.Types     ( PlantStorageErr(..) )
 
 
 import "this"    Backend.Runtime
@@ -38,7 +39,29 @@ plantApiServerT
   :: forall r
    . Members '[Error KnownError , Transaction , Reader Logger] r
   => ServerT PlantApi (Sem r)
-plantApiServerT = searchByName :<|> undefined :<|> undefined :<|> undefined
+plantApiServerT = searchByName :<|> addPlant :<|> undefined :<|> undefined
+
+addPlant
+  :: forall r
+   . Members '[Error KnownError , Transaction , Reader Logger] r
+  => Plant
+  -> Sem r FullPlantData
+addPlant = generateId >=> dbUpdate . AddPlant >=> getPlant . headMay
+ where
+  -- snowflake based id gen. 
+  generateId = pure . identity
+  getPlant mid =
+    selectByIds mid
+      >>= populatePlantData
+      .   fmap _unStoredPlant
+      .   headMay
+      .   M.elems
+      >>= maybe (notFound mid) pure
+  notFound =
+    throwKnownError
+      . StorageError
+      . mappend "Unable to get just stored plant:"
+      . show
 
 searchByName
   :: forall r
