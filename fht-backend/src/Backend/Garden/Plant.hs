@@ -1,7 +1,6 @@
 {-# LANGUAGE
     TypeFamilies
   , TemplateHaskell
-  , TypeSynonymInstances
   , FlexibleInstances
   , TypeOperators
   , MultiParamTypeClasses
@@ -31,7 +30,6 @@ import           Control.Arrow                  ( returnA
                                                 )
 import           Data.Profunctor.Product.TH     ( makeAdaptorAndInstance' )
 import           Opaleye
-import "fht-api" Api.Garden.Plant
 import "fht-data" Data.Garden.Plant
 import "dbstorage-polysemy" Database.Storage
 import "dbstorage-polysemy" Polysemy.Database

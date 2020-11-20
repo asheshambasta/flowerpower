@@ -13,8 +13,9 @@ type PlantIdF = PlantId' (Field PGInt8)
 
 -- * Errors 
 
-newtype PlantStorageErr = AlreadyExists PlantId
-                        deriving Show
+data PlantStorageErr = AlreadyExists PlantId
+                     | StorageError Text
+                     deriving Show
 
 instance IsKnownError PlantStorageErr where
 
