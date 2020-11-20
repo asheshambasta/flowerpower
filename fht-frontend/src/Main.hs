@@ -23,19 +23,17 @@ import           Protolude
 
 main :: IO ()
 main = mainWidgetWithBulma $ do
-  rec dNav      <- navBar (RD.constDyn . length $ plants')
-      eAddLogs  <- sectionContainer . plantMaintenance dSelected $ Summary
-      dPlants   <- getPlants dNav
-                                                                -- ePlants    <- listPlants dApiSearch RD.never
+  rec dNav <- navBar (length <$> dPlants)
+
+      let eAddPlantNav = RD.ffilter (== Nav.AddNew) eNav $> ()
+          eNav         = RD.updated dNav
+      ePlantsAfterAdd <- addPlantModal eAddPlantNav
+                          -- eAddLogs  <- sectionContainer . plantMaintenance dSelected $ Summary
+      dPlants         <- getPlants dNav
       eSelected <- dispPlants initSelected (Nav.dNavFilterPlants dNav) dPlants
-      dSelected <- RD.holdDyn initSelected (Just <$> eSelected)
+      dSelected       <- RD.holdDyn initSelected (Just <$> eSelected)
   pure ()
- where
-  -- baseUrl =
-  --   RD.constDyn $ Api.BaseFullUrl Api.Http "localhost" 3000 "/v1/plants"
-  -- (listPlants :<|> create :<|> updateP :<|> _) = Api.plantApiClient baseUrl
-  plants'      = [fpd0, fpd1]
-  initSelected = Nothing -- headMay plants
+  where initSelected = Nothing -- headMay plants
 
 getPlants
   :: (RD.MonadWidget t m, RD.MonadHold t m)

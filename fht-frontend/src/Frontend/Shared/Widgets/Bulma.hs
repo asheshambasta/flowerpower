@@ -6,6 +6,8 @@ module Frontend.Shared.Widgets.Bulma
   , spanIEmpty
   , box
   , faButton
+  -- $forms 
+  , simpleFormInput
   )
 where
 
@@ -46,3 +48,11 @@ faButton
   => Text
   -> m (RD.Element RD.EventResult (RD.DomBuilderSpace m) t, ())
 faButton = RD.elClass' "button" "button" . spanIEmpty "icon is-small"
+
+-- $forms
+-- Support for Bulma forms. 
+
+simpleFormInput :: RD.DomBuilder t m => Text -> m a -> m a
+simpleFormInput label ma = Tags.divClass "field" $ do
+  Tags.labelClass "label" . RD.text $ label
+  Tags.divClass "control" ma

@@ -3,6 +3,7 @@ module Frontend.Garden.Plant
   ( plantCard
   , dispPlants
   , plantMaintenance
+  , addPlantModal
   , MaintBoxMode(..)
   , module Data.Garden.Plant
   )
@@ -63,6 +64,15 @@ plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) = do
   prodClass     = "class" =: "tile is-child notification is-info"
   -- we want to display specialised styles for plants that contain dues.
   containsDues' = containsDues statuses
+
+addPlantModal
+  :: (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)
+  => RD.Event t ()
+  -> m (RD.Event t [FullPlantData])
+addPlantModal eModal = fmap fst . modal eModal $ do
+  dName <- RD._inputElement_value
+    <$> Bw.simpleFormInput "Name" (RD.inputElement RD.def)
+  pure RD.never
 
 duesIndicator :: RD.DomBuilder t m => Bool -> m ()
 duesIndicator containsDues'
