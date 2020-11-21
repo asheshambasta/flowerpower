@@ -28,7 +28,9 @@ import           Lib.Reflex.Clicks              ( clickEvents
                                                 , clickEventWith
                                                 , ClickType(DoubleClick)
                                                 )
-import "bulmex"  Reflex.Bulmex.Modal            ( modal )
+import "bulmex"  Reflex.Bulmex.Modal            ( modal
+                                                , modalClose
+                                                )
 import qualified "bulmex" Reflex.Bulmex.Tag.Bulma
                                                as BTags
 import "reflex-dom-helpers" Reflex.Tags        as Tags
@@ -78,38 +80,42 @@ addPlantModal
      -> m (RD.Event t a)
      )
   -> m (RD.Event t a)
-addPlantModal eModal callback = fmap fst . modal eModal . box $ do
-  dName        <- Bf.textInputValidate RD.def "Name" validateName
-  dDesc        <- Bf.textInputNonEmpty RD.def "Description"
-  dImage       <- Bf.textInputNonEmpty RD.def "Image URL"
-  dTimePlanted <- Bf.textInputValidate
-    RD.def
-    "Date planted (YYYY-MM-DD)"
-    (first T.pack . readEither @Day . T.unpack)
-  dMaints <- maintButtons
+addPlantModal eModal callback = fmap fst . modalClose eModal . box $ do
+  rec dName <- Bf.textInputValidate RD.def "Name" eSaveClicked validateName
+      dDesc        <- Bf.textInputNonEmpty RD.def "Description" eSaveClicked
+      dImage       <- Bf.textInputNonEmpty RD.def "Image URL" eSaveClicked
+      dTimePlanted <- Bf.textInputValidate
+        RD.def
+        "Date planted (YYYY-MM-DD)"
+        eSaveClicked
+        (first T.pack . readEither @Day . T.unpack)
+      dMaints <- maintButtons
 
-  let dEitherPlant = do
-        eName       <- dName
-        _pDesc      <- dDesc
-        _pImage     <- dImage
-        maints      <- M.toList <$> dMaints
-        eDayPlanted <- dTimePlanted
-        pure
-          $   Plant 10
-          <$> eName
-          <*> pure _pDesc
-          <*> pure _pImage
-          <*> eDayPlanted
-          <*> pure (fst <$> maints)
-          <*> pure (snd <$> maints)
+      let dEitherPlant = do
+            eName       <- dName
+            _pDesc      <- dDesc
+            _pImage     <- dImage
+            maints      <- M.toList <$> dMaints
+            eDayPlanted <- dTimePlanted
+            pure
+              $   Plant 0
+              <$> eName
+              <*> pure _pDesc
+              <*> pure _pImage
+              <*> eDayPlanted
+              <*> pure (fst <$> maints)
+              <*> pure (snd <$> maints)
 
-  eSaveClicked <- mkButtonDynClassToggle
-    (either (const False) (not . T.null) <$> dName)
-    "button is-primary"
-    "button is-disabled"
-    (RD.dynText "Save")
+      eSaveClicked <- mkButtonDynClassToggle (isRight <$> dEitherPlant)
+                                             "button is-primary"
+                                             "button is-disabled"
+                                             (RD.dynText "Save")
 
-  callback dEitherPlant eSaveClicked
+  eSaved <- callback dEitherPlant eSaveClicked
+
+  let eClose = RD.ffilter isRight (RD.updated dEitherPlant) $> ()
+
+  pure (eSaved, eClose)
  where
   box = fmap snd . Bw.box (RD.text "Add a new plant")
   validateName txt | T.null txt = Left "Name cannot be empty"

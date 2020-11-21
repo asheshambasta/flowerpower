@@ -28,21 +28,23 @@ main = mainWidgetWithBulma $ do
 
       let eAddPlantNav = RD.ffilter (== Nav.AddNew) eNav $> ()
           eNav         = RD.updated dNav
-      ePlantsAfterAdd <- addPlantModal eAddPlantNav addPlant
-                                                              -- eAddLogs  <- sectionContainer . plantMaintenance dSelected $ Summary
-      dPlants         <- getPlants dNav
-      eSelected <- dispPlants initSelected (Nav.dNavFilterPlants dNav) dPlants
-      dSelected       <- RD.holdDyn initSelected (Just <$> eSelected)
+      ePlantAdded <- addPlantModal eAddPlantNav addPlant
+      ePostBuild  <- RD.getPostBuild
+      dPlants <- getPlants dNav . RD.leftmost $ [ePlantAdded $> (), ePostBuild]
+      eSelected   <- dispPlants initSelected (Nav.dNavFilterPlants dNav) dPlants
+      dSelected   <- RD.holdDyn initSelected (Just <$> eSelected)
   pure ()
   where initSelected = Nothing -- headMay plants
 
 getPlants
   :: (RD.MonadWidget t m, RD.MonadHold t m)
   => RD.Dynamic t Nav.Navigation
+  -> RD.Event t () -- ^ Event to refresh plants
   -> m (RD.Dynamic t [FullPlantData])
-getPlants dNav = do
-  dApiSearch   <- RD.holdDyn Api.QNone (Api.QParamSome <$> eNavSearch)
-  ePlantReqRes <- listPlants dApiSearch (RD.updated dApiSearch $> ()) -- TODO: should be leftmost of dom-loaded event as well.
+getPlants dNav eRefresh = do
+  dApiSearch <- RD.holdDyn Api.QNone (Api.QParamSome <$> eNavSearch)
+  let eFetch = RD.leftmost [RD.updated dApiSearch $> (), eRefresh]
+  ePlantReqRes <- listPlants dApiSearch eFetch -- TODO: should be leftmost of dom-loaded event as well.
   let ePlants = RD.fmapMaybe Api.reqSuccess ePlantReqRes
   RD.holdDyn [] ePlants
   where eNavSearch = RD.fmapMaybe (preview Nav._Search) (RD.updated dNav)

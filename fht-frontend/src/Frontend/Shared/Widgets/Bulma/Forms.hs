@@ -1,4 +1,4 @@
-{-# LANGUAGE RecursiveDo, BangPatterns #-}
+{-# LANGUAGE RecursiveDo #-}
 
 module Frontend.Shared.Widgets.Bulma.Forms
   ( simpleFormInput
@@ -47,12 +47,12 @@ textInputValidate
   :: (RD.DomBuilder t m, RD.MonadHold t m, MonadFix m, RD.PostBuild t m, Show a)
   => RD.InputElementConfig RD.EventResult t (RD.DomBuilderSpace m)
   -> Text
+  -> RD.Event t ()
   -> (Text -> Either Text a)
   -> m (RD.Dynamic t (Either Text a))
-textInputValidate conf label validate = do
+textInputValidate conf label eValidate validate = do
   rec
     let eValidation = RD.tag (validate <$> RD.current dInputTxt) eValidate
-        eValidate   = RD.updated dInputTxt
 
     dValidationMsg <- RD.holdDyn
       ""
@@ -72,11 +72,11 @@ textInputMaybe
   :: (RD.DomBuilder t m, RD.MonadHold t m, MonadFix m, RD.PostBuild t m, Show a)
   => RD.InputElementConfig RD.EventResult t (RD.DomBuilderSpace m)
   -> Text
+  -> RD.Event t ()
   -> (Text -> Maybe a)
   -> m (RD.Dynamic t (Maybe a))
-textInputMaybe conf label validate = do
+textInputMaybe conf label eValidate validate = do
   rec let eValidation = RD.tag (validate <$> RD.current dInputTxt) eValidate
-          eValidate   = RD.updated dInputTxt
 
       dInputTxt <- simpleTextInput conf Nothing label
 
@@ -86,8 +86,12 @@ textInputNonEmpty
   :: (RD.DomBuilder t m, RD.MonadHold t m, MonadFix m, RD.PostBuild t m)
   => RD.InputElementConfig RD.EventResult t (RD.DomBuilderSpace m)
   -> Text
+  -> RD.Event t ()
   -> m (RD.Dynamic t (Maybe Text))
-textInputNonEmpty conf label = textInputMaybe conf label nonEmptyText
+textInputNonEmpty conf label eValidate = textInputMaybe conf
+                                                        label
+                                                        eValidate
+                                                        nonEmptyText
  where
   nonEmptyText t | T.null t  = Nothing
                  | otherwise = Just t
