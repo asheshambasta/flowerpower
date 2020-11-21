@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE RecursiveDo #-}
 module Frontend.Garden.Plant
   ( plantCard
@@ -9,10 +10,13 @@ module Frontend.Garden.Plant
   )
 where
 
+import qualified Data.Text                     as T
 import qualified Data.Map                      as M
 import           Lib.Reflex.Buttons
 import           Control.Lens
 import qualified Frontend.Shared.Widgets.Bulma as Bw
+import qualified Frontend.Shared.Widgets.Bulma.Forms
+                                               as Bf
 import           Control.Monad.Fix              ( MonadFix )
 import           Lib.Reflex.Elements            ( emptyEl )
 import           Protolude               hiding ( to )
@@ -68,11 +72,58 @@ plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) = do
 addPlantModal
   :: (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)
   => RD.Event t ()
-  -> m (RD.Event t [FullPlantData])
-addPlantModal eModal = fmap fst . modal eModal $ do
-  dName <- RD._inputElement_value
-    <$> Bw.simpleFormInput "Name" (RD.inputElement RD.def)
+  -- -> (RD.Dynamic t (Either Text Plant) -> m (RD.Event t FullPlantData))
+  -> m (RD.Event t Plant)
+addPlantModal eModal = fmap fst . modal eModal . box $ do
+  rec dName <- Bf.textInputValidate RD.def "Name" eSaveClicked validateName
+      dDesc        <- Bf.simpleTextInputDef "Description"
+      dImage       <- Bf.simpleTextInputDef "Image URL"
+      dTimePlanted <- Bf.simpleTextInputDef "Date planted (YYYY-MM-DD)"
+      dMaints      <- maintButtons
+
+              -- eSaveClicked <- mkButtonDynClassToggle
+              --   (either (const False) (not . T.null) <$> dName)
+              --   "button is-primary"
+              --   "button is-disabled"
+              --   (RD.dynText "Save")
+      eSaveClicked <- mkButtonConstTextClass "button is-primary" mempty "Save"
+
   pure RD.never
+ where
+  box = fmap snd . Bw.box (RD.text "Add a new plant")
+  validateName txt | T.null txt = Left "Name cannot be empty"
+                   | otherwise  = Right txt
+
+-- | Display a set of maintenance buttons, the event indicates the button that was pressed.
+maintButtons
+  :: forall t m
+   . (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)
+  => m (RD.Dynamic t (Map MaintenanceType MaintenanceFreq))
+maintButtons = Tags.divClass "buttons" $ do
+  rec eMaintType <- mapM (mkButton' dMaints) allStats <&> RD.leftmost
+      dMaints    <- RD.foldDyn (M.alter rotate') mempty eMaintType
+  pure dMaints
+ where
+  mkButton' dMaints mt =
+    let dFreqMaybe  = M.lookup mt <$> dMaints
+        dIsSelected = isJust <$> dFreqMaybe
+        dButtonTxt  = RD.dynText $ dMaints <&> displayMtWithFreq mt
+    in  ($> mt)
+          <$> mkButtonDynClassToggle dIsSelected
+                                     "button is-primary is-light"
+                                     "button"
+                                     dButtonTxt
+
+  allStats = enumFromTo @MaintenanceType minBound maxBound
+  rotate' Nothing = Just minBound
+  rotate' (Just mf) | mf == maxBound = Nothing
+                    | otherwise      = Just $ succ mf
+
+displayMtWithFreq
+  :: MaintenanceType -> Map MaintenanceType MaintenanceFreq -> Text
+displayMtWithFreq mt maints = case M.lookup mt maints of
+  Nothing -> show mt <> " (+)"
+  Just mf -> show mt <> " (" <> T.singleton (T.head . show $ mf) <> ")"
 
 duesIndicator :: RD.DomBuilder t m => Bool -> m ()
 duesIndicator containsDues'

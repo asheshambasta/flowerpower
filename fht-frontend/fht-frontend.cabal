@@ -39,6 +39,7 @@ executable fht-frontend
     Frontend.Nav
     Frontend.Shared.Widgets
     Frontend.Shared.Widgets.Bulma
+    Frontend.Shared.Widgets.Bulma.Forms
     Frontend.Garden.Plant
     Lib.Reflex.Buttons
     Lib.Reflex.Elements
