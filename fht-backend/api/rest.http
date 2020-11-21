@@ -3,3 +3,23 @@
 # List plants
 :search = fo
 GET :host/v1/plants?name=:search
+
+# Add new plant.
+POST :host/v1/plants
+Content-Type: application/json;charset=utf-8
+{
+    "_pMaintenanceTypes": [
+        "Pruning"
+    ],
+    "_pMaintenanceFreqs": [
+        "Week"
+    ],
+    "_pName": "FooBa",
+    "_pImage": null,
+    "_pId": 3,
+    "_pDesc": "Some plan",
+    "_pDayPlanted": "2020-10-10"
+}
+
+# Add new plant.
+OPTIONS :host/v1/plants

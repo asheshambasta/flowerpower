@@ -6,6 +6,7 @@ where
 
 
 import qualified Control.Monad.Log             as MLog
+import "prelude-polysemy" Prelude.Polysemy.ID
 import "prelude-polysemy" Prelude.Control.Error ( logErrors
                                                 , asServantError
                                                 )
@@ -51,6 +52,8 @@ sem2Handler
   -> (  Sem
          '[ Transaction
           , Error KnownError
+          , ID
+          , Reader IDGen
           , Logging
           , Reader Logger
           , Reader DBRuntime
@@ -68,6 +71,8 @@ sem2Handler Runtime {..} sem =
     sem'
       & logErrors
       & runError
+      & runIDGenIO
+      & Polysemy.Reader.runReader _rIDGen
       & runLoggingIO
       & Polysemy.Reader.runReader _rLogger
       & Polysemy.Reader.runReader _rDBRuntime

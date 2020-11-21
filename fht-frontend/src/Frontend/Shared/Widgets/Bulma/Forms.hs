@@ -5,9 +5,12 @@ module Frontend.Shared.Widgets.Bulma.Forms
   , simpleTextInput
   , simpleTextInputDef
   , textInputValidate
+  , textInputMaybe
+  , textInputNonEmpty
   )
 where
 
+import qualified Data.Text                     as T
 import           Control.Lens
 import           Control.Monad.Fix
 import qualified "reflex-dom-helpers" Reflex.Tags
@@ -44,25 +47,48 @@ textInputValidate
   :: (RD.DomBuilder t m, RD.MonadHold t m, MonadFix m, RD.PostBuild t m, Show a)
   => RD.InputElementConfig RD.EventResult t (RD.DomBuilderSpace m)
   -> Text
-  -> RD.Event t ()
   -> (Text -> Either Text a)
   -> m (RD.Dynamic t (Either Text a))
-textInputValidate conf label eValidate validate = do
-  traceM "here"
+textInputValidate conf label validate = do
   rec
-    let eValidation = RD.tag (validate <$> RD.current dTxtTyped) eValidate
-        eErrorMaybe = preview _Left <$> eValidation
-        eError      = RD.fforMaybe eErrorMaybe identity
+    let eValidation = RD.tag (validate <$> RD.current dInputTxt) eValidate
+        eValidate   = RD.updated dInputTxt
 
-    dValidationMsg <- RD.holdDyn "" eError
-    dHasErrors     <- RD.toggle False eError
+    dValidationMsg <- RD.holdDyn
+      ""
+      (fromMaybe "" . preview _Left <$> eValidation)
+    dHasErrors <- RD.holdDyn False (isLeft <$> eValidation)
 
     let
       dValidateClass = dHasErrors <&> \errs ->
         ("class" RD.=:) $ if errs then "help is-danger" else "help is-success"
       mHelp = Just . Tags.pDynAttr dValidateClass . RD.dynText $ dValidationMsg
 
-    dTxtTyped <- RD.traceDyn "dTxtTyped" <$> simpleTextInput conf mHelp label
+    dInputTxt <- simpleTextInput conf mHelp label
 
-  traceM "here2"
   RD.holdDyn (Left "") eValidation
+
+textInputMaybe
+  :: (RD.DomBuilder t m, RD.MonadHold t m, MonadFix m, RD.PostBuild t m, Show a)
+  => RD.InputElementConfig RD.EventResult t (RD.DomBuilderSpace m)
+  -> Text
+  -> (Text -> Maybe a)
+  -> m (RD.Dynamic t (Maybe a))
+textInputMaybe conf label validate = do
+  rec let eValidation = RD.tag (validate <$> RD.current dInputTxt) eValidate
+          eValidate   = RD.updated dInputTxt
+
+      dInputTxt <- simpleTextInput conf Nothing label
+
+  RD.holdDyn Nothing eValidation
+
+textInputNonEmpty
+  :: (RD.DomBuilder t m, RD.MonadHold t m, MonadFix m, RD.PostBuild t m)
+  => RD.InputElementConfig RD.EventResult t (RD.DomBuilderSpace m)
+  -> Text
+  -> m (RD.Dynamic t (Maybe Text))
+textInputNonEmpty conf label = textInputMaybe conf label nonEmptyText
+ where
+  nonEmptyText t | T.null t  = Nothing
+                 | otherwise = Just t
+

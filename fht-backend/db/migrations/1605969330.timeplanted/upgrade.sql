@@ -1,0 +1,6 @@
+DELETE FROM plant WHERE TRUE; 
+
+ALTER TABLE plant RENAME COLUMN time_planted TO day_planted;
+ALTER TABLE plant ALTER COLUMN day_planted TYPE DATE; 
+ALTER TABLE plant ALTER COLUMN day_planted DROP DEFAULT;
+ALTER TABLE plant ALTER COLUMN day_planted SET NOT NULL;

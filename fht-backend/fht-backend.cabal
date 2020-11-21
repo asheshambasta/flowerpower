@@ -24,9 +24,12 @@ executable fht-backend
     -- Servant stuff.
     , servant 
     , servant-server 
+
+    , http-types
     , warp
     , wai
     , wai-extra
+    , wai-cors
 
     -- Effects
     , polysemy

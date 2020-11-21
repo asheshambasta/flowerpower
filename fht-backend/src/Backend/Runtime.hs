@@ -14,6 +14,7 @@ module Backend.Runtime
 where
 
 import           Control.Monad.Log             as ML
+import "prelude-polysemy" Prelude.Polysemy.ID
 import "prelude-polysemy" Prelude.Control.Log  as L
 import "dbstorage-polysemy" Database.Runtime   as DB
 import qualified Options.Applicative           as A
@@ -22,6 +23,7 @@ data Conf = Conf
   { _cDBConf          :: DB.DBConf
   , _cLogLevel        :: ML.Level
   , _cApplicationName :: Text
+  , _cSnowflakeNode   :: Integer
   }
 
 -- | The runtime is nothing but a product of materialised values useful for running the application.
@@ -29,6 +31,7 @@ data Runtime = Runtime
   { _rDBRuntime :: DBRuntime
   , _rLogger    :: L.Logger
   , _rConf      :: Conf
+  , _rIDGen     :: IDGen
   }
 
 confP :: A.Parser Conf
@@ -36,6 +39,7 @@ confP = do
   _cDBConf          <- DB.dbConfP
   _cLogLevel        <- parseLogLevel
   _cApplicationName <- parseAppName
+  _cSnowflakeNode   <- parseSnowflakeNode
   pure Conf { .. }
  where
   parseAppName = A.strOption
@@ -53,12 +57,21 @@ confP = do
     <> A.value L.levelDebug
     <> A.showDefault
     )
+  parseSnowflakeNode = A.option
+    A.auto
+    (  A.long "snowflake-node"
+    <> A.short 'S'
+    <> A.help "Snowflake node for generating ids"
+    <> A.value 0
+    <> A.showDefault
+    )
 
 conf2Runtime :: Conf -> IO (Either RuntimeError Runtime)
 conf2Runtime _rConf@Conf {..} = do
 
   mlLogger <- createLogger
   eDb      <- try $ createRuntime _cDBConf
+  _rIDGen  <- newIDGen defaultConfig _cSnowflakeNode
   let _rLogger = L.Logger logEnv mlLogger
 
   pure $ case eDb of

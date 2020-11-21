@@ -5,6 +5,8 @@
   , TypeOperators
   , MultiParamTypeClasses
   , Arrows 
+  , InstanceSigs
+  , TypeApplications
 #-}
 module Backend.Garden.Plant
   ( StoredPlant'(..)
@@ -20,14 +22,14 @@ import           Backend.Garden.Plant.Types     ( PlantIdF
                                                 , PlantStorageErr(..)
                                                 )
 import           Polysemy.Error                as E
+import qualified "prelude-polysemy" Prelude.Polysemy.ID
+                                               as ID
 import "prelude-polysemy" Prelude.Control.Error
                                                as Err
 import           Data.Aeson
 import           Prelude                 hiding ( to )
+import           Control.Arrow                  ( returnA )
 import           Control.Lens            hiding ( ilike )
-import           Control.Arrow                  ( returnA
-                                                , (>>^)
-                                                )
 import           Data.Profunctor.Product.TH     ( makeAdaptorAndInstance' )
 import           Opaleye
 import "fht-data" Data.Garden.Plant
@@ -51,7 +53,7 @@ type PlantF
       (Field PGText)
       (FieldNullable PGText)
       (FieldNullable PGText)
-      (FieldNullable PGTimestamptz)
+      (Field PGDate)
       (Field (SqlArray PGMaintenanceType))
       (Field (SqlArray PGMaintenanceFreq))
 
@@ -61,7 +63,7 @@ instance DBIdentity StoredPlant where
 
 instance DBStorage StoredPlant where
 
-  type UpdateConstraints StoredPlant = '[E.Error Err.KnownError]
+  type UpdateConstraints StoredPlant = '[E.Error Err.KnownError , ID.ID]
 
   type DBError StoredPlant = Void
   
@@ -77,15 +79,27 @@ instance DBStorage StoredPlant where
     SearchByName name -> mkIdMap <$> trSelect (proc () -> byNameQ -< name)
     GetAllPlants      -> mkIdMap <$> trSelect allPlantsQ
 
+  dbUpdate
+    :: UpdateOf StoredPlant r
+    => DBUpdate StoredPlant
+    -> Sem r [DBId StoredPlant]
   dbUpdate = \case
-    AddPlant p@Plant {..} -> selectExistingId
-      >>= maybe insertRow (Err.throwKnownError . AlreadyExists)
-     where
-      selectExistingId = headMay <$> trSelect
-        (proc () -> (byIdsQ >>^ view (unStoredPlant . pId)) -< [_pId])
-      insertRow = trInsertManyReturning plantTable
-                                        [toFields $ StoredPlant p]
-                                        (view $ unStoredPlant . pId)
+    AddPlant p@Plant {..} -> do
+      newId <- ID.newSnowflake
+      let pid = PlantId . fromIntegral . ID.snowflakeToInteger $ newId
+      trInsertManyReturning plantTable
+                            [toFields . StoredPlant @Plant $ p & pId .~ pid]
+                            (view $ unStoredPlant . pId)
+
+
+     --  selectExistingId
+     --  >>= maybe insertRow (Err.throwKnownError . AlreadyExists)
+     -- where
+     --  selectExistingId = headMay <$> trSelect
+     --    (proc () -> (byIdsQ >>^ view (unStoredPlant . pId)) -< [_pId])
+     --  insertRow = trInsertManyReturning plantTable
+     --                                    [toFields $ StoredPlant p]
+     --                                    (view $ unStoredPlant . pId)
 
     DeletePlant id -> trDeleteReporting
       id
@@ -106,7 +120,7 @@ plantTable = table "plant" . pStoredPlant . StoredPlant . pPlant $ Plant
   , _pName             = tableField "plant_name"
   , _pDesc             = tableField "description"
   , _pImage            = tableField "image"
-  , _pTimePlanted      = tableField "time_planted"
+  , _pDayPlanted       = tableField "day_planted"
   , _pMaintenanceTypes = tableField "maintenance_types"
   , _pMaintenanceFreqs = tableField "maintenance_freqs"
   }

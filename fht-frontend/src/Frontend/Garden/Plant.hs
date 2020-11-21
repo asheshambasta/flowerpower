@@ -10,6 +10,7 @@ module Frontend.Garden.Plant
   )
 where
 
+import           Data.Time                      ( Day )
 import qualified Data.Text                     as T
 import qualified Data.Map                      as M
 import           Lib.Reflex.Buttons
@@ -72,23 +73,43 @@ plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) = do
 addPlantModal
   :: (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)
   => RD.Event t ()
-  -- -> (RD.Dynamic t (Either Text Plant) -> m (RD.Event t FullPlantData))
-  -> m (RD.Event t Plant)
-addPlantModal eModal = fmap fst . modal eModal . box $ do
-  rec dName <- Bf.textInputValidate RD.def "Name" eSaveClicked validateName
-      dDesc        <- Bf.simpleTextInputDef "Description"
-      dImage       <- Bf.simpleTextInputDef "Image URL"
-      dTimePlanted <- Bf.simpleTextInputDef "Date planted (YYYY-MM-DD)"
-      dMaints      <- maintButtons
+  -> (  RD.Dynamic t (Either Text Plant)
+     -> RD.Event t ()
+     -> m (RD.Event t a)
+     )
+  -> m (RD.Event t a)
+addPlantModal eModal callback = fmap fst . modal eModal . box $ do
+  dName        <- Bf.textInputValidate RD.def "Name" validateName
+  dDesc        <- Bf.textInputNonEmpty RD.def "Description"
+  dImage       <- Bf.textInputNonEmpty RD.def "Image URL"
+  dTimePlanted <- Bf.textInputValidate
+    RD.def
+    "Date planted (YYYY-MM-DD)"
+    (first T.pack . readEither @Day . T.unpack)
+  dMaints <- maintButtons
 
-              -- eSaveClicked <- mkButtonDynClassToggle
-              --   (either (const False) (not . T.null) <$> dName)
-              --   "button is-primary"
-              --   "button is-disabled"
-              --   (RD.dynText "Save")
-      eSaveClicked <- mkButtonConstTextClass "button is-primary" mempty "Save"
+  let dEitherPlant = do
+        eName       <- dName
+        _pDesc      <- dDesc
+        _pImage     <- dImage
+        maints      <- M.toList <$> dMaints
+        eDayPlanted <- dTimePlanted
+        pure
+          $   Plant 10
+          <$> eName
+          <*> pure _pDesc
+          <*> pure _pImage
+          <*> eDayPlanted
+          <*> pure (fst <$> maints)
+          <*> pure (snd <$> maints)
 
-  pure RD.never
+  eSaveClicked <- mkButtonDynClassToggle
+    (either (const False) (not . T.null) <$> dName)
+    "button is-primary"
+    "button is-disabled"
+    (RD.dynText "Save")
+
+  callback dEitherPlant eSaveClicked
  where
   box = fmap snd . Bw.box (RD.text "Add a new plant")
   validateName txt | T.null txt = Left "Name cannot be empty"

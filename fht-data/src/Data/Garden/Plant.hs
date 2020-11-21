@@ -40,7 +40,7 @@ module Data.Garden.Plant
   , pName
   , pDesc
   , pImage
-  , pTimePlanted
+  , pDayPlanted
   , pMaintenanceTypes
   , pMaintenanceFreqs
   , pMaintenances
@@ -113,7 +113,10 @@ maintenanceStatus f t | t < 0     = UnsafeDueIn f t
                       | otherwise = UnsafeDueBy f (Just t)
 
 newtype PlantId' id = PlantId { _unPlantId :: id }
-                 deriving (Eq, Show, ToJSON, FromJSON, ToHttpApiData, FromHttpApiData, Ord, Num) via id
+                 deriving ( Eq, Show, ToJSON
+                          , FromJSON, ToHttpApiData, FromHttpApiData
+                          , Ord, Num, Real, Enum, Integral
+                          ) via id
 
 type PlantId = PlantId' Int64
 
@@ -125,7 +128,7 @@ data Plant' id name desc img time maint maintFreq = Plant
   , _pName             :: name
   , _pDesc             :: desc -- ^ Description 
   , _pImage            :: img -- ^ An image (if available)
-  , _pTimePlanted      :: time -- ^ Time at which this was planted
+  , _pDayPlanted       :: time -- ^ Time at which this was planted
   , _pMaintenanceTypes :: maint
   , _pMaintenanceFreqs :: maintFreq
   }
@@ -149,7 +152,7 @@ type Plant
       Text
       (Maybe Text)
       (Maybe Text)
-      (Maybe Time.UTCTime)
+      Time.Day
       [MaintenanceType]
       [MaintenanceFreq]
 

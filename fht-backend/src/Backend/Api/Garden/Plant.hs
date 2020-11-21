@@ -16,7 +16,8 @@ import qualified Data.Text                     as T
 
 import           Polysemy
 import           Polysemy.Reader
-import           Polysemy.Error
+
+import "prelude-polysemy" Prelude.Polysemy.ID
 
 import "dbstorage-polysemy" Polysemy.Database
 import "dbstorage-polysemy" Database.Storage
@@ -26,24 +27,20 @@ import           Servant.Server
 import           Backend.Garden.Plant
 import           Backend.Garden.Plant.Types     ( PlantStorageErr(..) )
 
-
-import "this"    Backend.Runtime
-import "this"    Backend.Garden.Plant
-
 import "fht-data" Data.Garden.Plant
 import "fht-api" Api.Garden.Plant
 
-import           Network.Wai.Middleware.AddHeaders
+import "wai-cors" Network.Wai.Middleware.Cors
 
 plantApiServerT
   :: forall r
-   . Members '[Error KnownError , Transaction , Reader Logger] r
+   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
   => ServerT PlantApi (Sem r)
 plantApiServerT = searchByName :<|> addPlant :<|> undefined :<|> undefined
 
 addPlant
   :: forall r
-   . Members '[Error KnownError , Transaction , Reader Logger] r
+   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
   => Plant
   -> Sem r FullPlantData
 addPlant = generateId >=> dbUpdate . AddPlant >=> getPlant . headMay
@@ -76,7 +73,7 @@ searchByName = \case
 
 plantApiServer
   :: forall r
-   . Members '[Error KnownError , Transaction , Reader Logger] r
+   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
   => (forall r' a . (r' ~ r) => Sem r a -> Handler a)
   -> Server PlantApi
 plantApiServer natTrans =
@@ -84,9 +81,21 @@ plantApiServer natTrans =
 
 plantApiApplication
   :: forall r
-   . Members '[Error KnownError , Transaction , Reader Logger] r
+   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
   => (forall r' a . (r' ~ r) => Sem r a -> Handler a)
   -> Application
 plantApiApplication natTrans =
   serve (Proxy @PlantApi) (plantApiServer natTrans)
-    & addHeaders [("access-control-allow-origin", "*")]
+    -- & addHeaders [("access-control-allow-origin", "*")]
+    & cors (const . Just $ corsPolicy)
+ where
+  corsPolicy = simpleCorsResourcePolicy
+    { corsOrigins        = Just (["http://localhost:3003"], True)
+    , corsMethods        = ["GET", "PUT", "POST", "DELETE", "OPTIONS"]
+    , corsRequestHeaders = [ hAuthorization
+                           , hContentType
+                           , hContentEncoding
+                           , hContentLength
+                           ]
+    , corsExposedHeaders = Just [hServer]
+    }
