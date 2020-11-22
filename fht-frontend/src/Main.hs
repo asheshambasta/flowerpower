@@ -28,11 +28,26 @@ main = mainWidgetWithBulma $ do
 
       let eAddPlantNav = RD.ffilter (== Nav.AddNew) eNav $> ()
           eNav         = RD.updated dNav
-      ePlantAdded <- addPlantModal eAddPlantNav addPlant
-      ePostBuild  <- RD.getPostBuild
-      dPlants <- getPlants dNav . RD.leftmost $ [ePlantAdded $> (), ePostBuild]
-      eSelected   <- dispPlants initSelected (Nav.dNavFilterPlants dNav) dPlants
-      dSelected   <- RD.holdDyn initSelected (Just <$> eSelected)
+
+      ePlantAdded   <- addPlantModal eAddPlantNav addPlant
+      ePlantDeleted <- deletePlant dDelete (eDelete $> ())
+      ePostBuild    <- RD.getPostBuild
+
+      let eRefreshPlants = [ePlantAdded $> (), ePostBuild, ePlantDeleted $> ()]
+
+      dPlants            <- getPlants dNav . RD.leftmost $ eRefreshPlants
+      ePlantSelectResult <- dispPlants initSelected
+                                       (Nav.dNavFilterPlants dNav)
+                                       dPlants
+
+      let eSelected = preview _SelectPlant <$> ePlantSelectResult
+          eDelete   = RD.fmapMaybe (preview _DeletePlant) ePlantSelectResult
+          eEdit     = RD.fmapMaybe (preview _EditPlant) ePlantSelectResult
+
+      dDelete   <- RD.holdDyn (PlantId 0) eDelete <&> fmap Api.QParamSome
+
+      dSelected <- RD.holdDyn initSelected
+                              (preview _SelectPlant <$> ePlantSelectResult)
   pure ()
   where initSelected = Nothing -- headMay plants
 
@@ -51,8 +66,10 @@ getPlants dNav eRefresh = do
 
 listPlants :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.ListPlants t m
 addPlant :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.CreatePlant t m
+deletePlant :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.DeletePlant t m
 
-(listPlants :<|> addPlant :<|> _) = Api.plantApiClient baseUrl
+(listPlants :<|> addPlant :<|> _ :<|> (_ :<|> deletePlant)) =
+  Api.plantApiClient baseUrl
   where baseUrl = RD.constDyn $ Api.BaseFullUrl Api.Http "localhost" 3000 ""
 
 navBar

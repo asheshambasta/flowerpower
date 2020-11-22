@@ -46,7 +46,7 @@ type PlantApi = ApiV1 :> "plants" :> ( QueryParam "name" Text :> Get '[JSON] [Pl
                                      )
 
 -- | Per plant api.
-type PerIdApi = PlantIdQueryParam :> ReqBody '[JSON] [Plant.MaintenanceLog] :> Put '[JSON] Plant.MaintenanceLog
+type PerIdApi = PlantIdQueryParam :> ReqBody '[JSON] [Plant.MaintenanceLog] :> Put '[JSON] Plant.FullPlantData
                  :<|> PlantIdQueryParam :> DeleteNoContent '[JSON] NoContent
 
 type ListPlants t m
@@ -65,7 +65,7 @@ type AddLog t m
   =  RD.Dynamic t (QParam Plant.PlantId)
   -> RD.Dynamic t (Either Text [Plant.MaintenanceLog])
   -> RD.Event t ()
-  -> m (RD.Event t (ReqResult () Plant.MaintenanceLog))
+  -> m (RD.Event t (ReqResult () Plant.FullPlantData))
 
 type DeletePlant t m
   =  RD.Dynamic t (QParam Plant.PlantId)

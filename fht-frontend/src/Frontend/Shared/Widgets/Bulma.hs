@@ -9,6 +9,7 @@ module Frontend.Shared.Widgets.Bulma
   )
 where
 
+import           Lib.Reflex.Clicks              ( clickEvent )
 import qualified "reflex-dom-helpers" Reflex.Tags
                                                as Tags
 import           Protolude
@@ -41,9 +42,9 @@ box title subtitle = Tags.divClass "box" $ do
   pure (t, s)
 
 -- | Create a button with a font-awesome icon.
-faButton
-  :: RD.DomBuilder t m
-  => Text
-  -> m (RD.Element RD.EventResult (RD.DomBuilderSpace m) t, ())
-faButton = RD.elClass' "button" "button" . spanIEmpty "icon is-small"
+faButton :: RD.DomBuilder t m => Text -> m (RD.Event t ())
+faButton txt = clickEvent $ fst <$> RD.elClass'
+  "button"
+  "button"
+  (spanIEmpty "icon is-small" txt)
 

@@ -1,11 +1,16 @@
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecursiveDo #-}
 module Frontend.Garden.Plant
   ( plantCard
   , dispPlants
-  , plantMaintenance
+  , maintenanceModal
   , addPlantModal
-  , MaintBoxMode(..)
+  , PlantSelectResult(..)
+  , _AddLogsNow
+  , _DeletePlant
+  , _EditPlant
+  , _SelectPlant
   , module Data.Garden.Plant
   )
 where
@@ -26,7 +31,7 @@ import qualified Reflex.Dom                    as RD
 import           Data.Garden.Plant
 import           Lib.Reflex.Clicks              ( clickEvents
                                                 , clickEventWith
-                                                , ClickType(DoubleClick)
+                                                , ClickType(SingleClick)
                                                 )
 import "bulmex"  Reflex.Bulmex.Modal            ( modal
                                                 , modalClose
@@ -35,23 +40,29 @@ import qualified "bulmex" Reflex.Bulmex.Tag.Bulma
                                                as BTags
 import "reflex-dom-helpers" Reflex.Tags        as Tags
 
-data MaintBoxMode = Modal | Summary
-                  deriving (Eq, Show)
+data PlantSelectResult = AddLogsNow [MaintenanceType]
+                      | DeletePlant PlantId
+                      | EditPlant PlantId
+                      | SelectPlant FullPlantData
+                      deriving (Eq, Show)
+
+makePrisms ''PlantSelectResult
 
 -- | Display a plant as a Bulma card. Events are fired on each click.
 plantCard
   :: (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)
   => RD.Dynamic t (Maybe FullPlantData) -- ^ A dynamic representing the currently selected plant.
   -> FullPlantData -- ^ Plant to display
-  -> m (RD.Event t FullPlantData) -- ^ Event with clicked plant.
+  -> m (RD.Event t PlantSelectResult) -- ^ Event with clicked plant.
 plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) = do
   eClickType <- clickEvents $ fst <$> plantTile
   -- for any kind of click, we do want this plant to be selected. 
   let eSelected  = eClickType $> fpd
       -- and we want to display the modal if the user has double clicked.
-      eShowModal = RD.ffilter (== DoubleClick) eClickType $> ()
-  modal eShowModal $ plantMaintenance dSelected Modal
-  pure eSelected
+      eShowModal = RD.ffilter (== SingleClick) eClickType $> ()
+  eModalResult <- fst <$> modalClose eShowModal (maintenanceModal dSelected)
+  pure $ RD.traceEvent "PlantSelectResult" $ RD.leftmost
+    [SelectPlant <$> eSelected, eModalResult]
  where
   plantTile =
     RD.elClass' "div" "tile is-parent"
@@ -165,11 +176,12 @@ dispPlants
   => Maybe FullPlantData -- ^ An optional, initially selected plant.
   -> RD.Dynamic t (FullPlantData -> Bool) -- ^ Filter plants
   -> RD.Dynamic t [FullPlantData] -- ^ Current list of plants 
-  -> m (RD.Event t FullPlantData) -- ^ Event with the selected plant.
+  -> m (RD.Event t PlantSelectResult) -- ^ Event with the selected plant.
 dispPlants mInitSelected dFilter dAllPlants =
   Bw.sectionContainer . Bw.tileSection $ do
-    rec dSelectedPlant <- RD.holdDyn mInitSelected (Just <$> ePlant)
-        ePlants        <- fmap RD.leftmost
+    rec dSelectedPlant <- RD.holdDyn mInitSelected
+                                     (preview _SelectPlant <$> ePlant)
+        ePlants <- fmap RD.leftmost
           <$> RD.dyn (dePlants' dSelectedPlant dFilter dAllPlants)
         ePlant <- RD.switchHold RD.never ePlants
     pure ePlant
@@ -180,60 +192,59 @@ dePlants'
   => RD.Dynamic t (Maybe FullPlantData)
   -> RD.Dynamic t (FullPlantData -> Bool) -- ^ Filter plants
   -> RD.Dynamic t [FullPlantData]
-  -> RD.Dynamic t (m [RD.Event t FullPlantData])
+  -> RD.Dynamic t (m [RD.Event t PlantSelectResult])
 dePlants' dSelectedPlant dFilter dAllPlants =
   mapM (plantCard dSelectedPlant) <$> dPlantsFiltered
   where dPlantsFiltered = filter <$> dFilter <*> dAllPlants
 
 -- | Display the plant maintenance section 
 -- Requires a dynamic indicating the currently selected plant: can be nothing if no plant is selected.
-plantMaintenance
+maintenanceModal
   :: forall t m
    . (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)
   => RD.Dynamic t (Maybe FullPlantData)
-  -> MaintBoxMode
-  -> m (RD.Event t [MaintenanceType]) -- ^ Event indicating which maintenance log(s) the user has marked completed.
-plantMaintenance dSelected mode = do
-  deSelected <- showSelection
-  RD.switchHold RD.never deSelected
+  -> m (RD.Event t PlantSelectResult, RD.Event t ()) -- ^ Event indicating which maintenance log(s) the user has marked completed.
+maintenanceModal dSelected = Tags.divClass "box" $ do
+  eEditDelete <- Tags.divClass "buttons" editDeleteButtons
+  deSelected  <- showSelection
+  eAddLogs    <- RD.switchHold RD.never deSelected
+  pure (RD.leftmost [eAddLogs, eEditDelete], eEditDelete $> ())
  where
-  showSelection = RD.dyn $ dSelected <&> \case
-    Nothing ->
-      Bw.box (RD.text "Welcome to Flowerpower!")
-             (RD.text "Select a plant to start.")
-        $> mempty
-    Just fpd@FullPlantData {..} -> Tags.divClass "box" $ do
-      Bw.box title subtitle
-      case mode of
-        Modal   -> displayMaints _fpdMStatuses
-        Summary -> pure RD.never
-     where
-      hasPending = containsDues _fpdMStatuses
-      maintenanceNeededText =
-        if hasPending then "Needs maintenance." else "All good!"
-      title = do
-        RD.text $ fpd ^. fpdPlant . pName
-        BTags.buttons $ do
-          -- edit button 
-          Bw.faButton "fa fa-sliders"
-          Bw.faButton "fa fa-trash"
-      subtitle = RD.text maintenanceNeededText -- fpd ^. fpdPlant . pName
+  editDeleteButtons = BTags.buttons $ do
+     -- edit & delete buttons button 
+    eEditClick   <- Bw.faButton "fa fa-sliders"
+    eDeleteClick <- Bw.faButton "fa fa-trash"
+
+    let bMaybeId = RD.current $ fmap (_pId . _fpdPlant) <$> dSelected
+        eEdit    = EditPlant <$> RD.tagMaybe bMaybeId eEditClick
+        eDelete  = DeletePlant <$> RD.tagMaybe bMaybeId eDeleteClick
+    pure . RD.leftmost $ [eEdit, eDelete]
+  showSelection = RD.dyn $ dSelected <&> \fpd ->
+    let mStatuses  = fromMaybe mempty $ fpd ^? _Just . fpdMStatuses
+        hasPending = containsDues mStatuses
+        maintenanceNeededText =
+          if hasPending then "Needs maintenance." else "All good!"
+        title    = RD.text . fromMaybe "" $ fpd ^? _Just . fpdPlant . pName
+        subtitle = RD.text maintenanceNeededText -- fpd ^. fpdPlant . pName
+    in  do
+          Bw.box title subtitle
+          displayMaints mStatuses
 
 displayMaints
   :: forall t m
    . (RD.DomBuilder t m, RD.MonadHold t m, MonadFix m)
   => MaintenanceStatuses
-  -> m (RD.Event t [MaintenanceType])
+  -> m (RD.Event t PlantSelectResult)
 displayMaints (M.toList -> maints)
   | not (null maints) = do
     dSelected <- multiSelect
     eDone     <- doneButton
     let bSelected = RD.current dSelected
         eSelected = RD.tag bSelected eDone
-    pure eSelected
+    pure $ AddLogsNow <$> eSelected
   | otherwise = do
     Tags.divClass "is-success" . RD.text $ "No required maintenances found."
-    pure $ RD.never $> []
+    pure RD.never
  where
   dueMaints   = filter (isDue . snd) maints
   multiSelect = halfArea $ do

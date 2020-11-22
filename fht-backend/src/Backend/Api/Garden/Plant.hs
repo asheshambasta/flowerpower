@@ -36,17 +36,16 @@ plantApiServerT
   :: forall r
    . Members '[ID , Error KnownError , Transaction , Reader Logger] r
   => ServerT PlantApi (Sem r)
-plantApiServerT = searchByName :<|> addPlant :<|> undefined :<|> undefined
+plantApiServerT =
+  searchByName :<|> addPlant :<|> undefined :<|> (addLogs :<|> deletePlant)
 
 addPlant
   :: forall r
    . Members '[ID , Error KnownError , Transaction , Reader Logger] r
   => Plant
   -> Sem r FullPlantData
-addPlant = generateId >=> dbUpdate . AddPlant >=> getPlant . headMay
+addPlant = dbUpdate . AddPlant >=> getPlant . headMay
  where
-  -- snowflake based id gen. 
-  generateId = pure . identity
   getPlant mid =
     selectByIds mid
       >>= populatePlantData
@@ -66,10 +65,29 @@ searchByName
   => Maybe Text
   -> Sem r [FullPlantData]
 searchByName = \case
-  Nothing -> dbSelect GetAllPlants >>= populate
-  (Just name) | T.null name -> dbSelect GetAllPlants >>= populate
-              | otherwise   -> dbSelect (SearchByName name) >>= populate
-  where populate = populatePlantData . fmap _unStoredPlant . M.elems
+  Nothing -> getAll
+  (Just (T.strip -> name))
+    | T.null name -> getAll
+    | otherwise   -> dbSelect (SearchByName name) >>= populate
+ where
+  populate = populatePlantData . fmap _unStoredPlant . M.elems
+  getAll   = dbSelect GetAllPlants >>= populate
+
+addLogs
+  :: forall r
+   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
+  => Maybe PlantId
+  -> [MaintenanceLog]
+  -> Sem r FullPlantData
+addLogs = undefined
+
+deletePlant
+  :: forall r
+   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
+  => Maybe PlantId
+  -> Sem r NoContent
+deletePlant mid = maybe noId (dbUpdate . DeletePlant) mid $> NoContent
+  where noId = throwKnownError NoIdSupplied
 
 plantApiServer
   :: forall r

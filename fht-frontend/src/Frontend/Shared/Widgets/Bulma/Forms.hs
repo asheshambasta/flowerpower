@@ -93,6 +93,6 @@ textInputNonEmpty conf label eValidate = textInputMaybe conf
                                                         eValidate
                                                         nonEmptyText
  where
-  nonEmptyText t | T.null t  = Nothing
-                 | otherwise = Just t
+  nonEmptyText (T.strip -> t) | T.null t  = Nothing
+                              | otherwise = Just t
 
