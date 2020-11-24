@@ -42,7 +42,7 @@ import "reflex-dom-helpers" Reflex.Tags        as Tags
 
 data PlantSelectResult = AddLogsNow [MaintenanceType]
                       | DeletePlant PlantId
-                      | EditPlant PlantId
+                      | EditPlant Plant
                       | SelectPlant FullPlantData
                       deriving (Eq, Show)
 
@@ -84,51 +84,74 @@ plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) = do
   containsDues' = containsDues statuses
 
 addPlantModal
-  :: (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)
+  :: forall a t m
+   . (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)
   => RD.Event t ()
+  -> RD.Event t (Maybe Plant)
   -> (  RD.Dynamic t (Either Text Plant)
      -> RD.Event t ()
      -> m (RD.Event t a)
      )
   -> m (RD.Event t a)
-addPlantModal eModal callback = fmap fst . modalClose eModal . box $ do
-  rec dName <- Bf.textInputValidate RD.def "Name" eSaveClicked validateName
-      dDesc        <- Bf.textInputNonEmpty RD.def "Description" eSaveClicked
-      dImage       <- Bf.textInputNonEmpty RD.def "Image URL" eSaveClicked
-      dTimePlanted <- Bf.textInputValidate
-        RD.def
-        "Date planted (YYYY-MM-DD)"
-        eSaveClicked
-        (first T.pack . readEither @Day . T.unpack)
-      dMaints <- maintButtons
+addPlantModal eModal eSelectedUpdated callback =
+  fmap fst . modalClose eModal . box $ do
 
-      let dEitherPlant = do
-            eName       <- dName
-            _pDesc      <- dDesc
-            _pImage     <- dImage
-            maints      <- M.toList <$> dMaints
-            eDayPlanted <- dTimePlanted
-            pure
-              $   Plant 0
-              <$> eName
-              <*> pure _pDesc
-              <*> pure _pImage
-              <*> eDayPlanted
-              <*> pure (fst <$> maints)
-              <*> pure (snd <$> maints)
+    rec dName        <- nameInput eSaveClicked
+        dDesc        <- descInput eSaveClicked
+        dImage       <- imageInput eSaveClicked
+        dTimePlanted <- timePlantedInput eSaveClicked
+        dMaints      <-
+          maintButtons
+          $   RD.traceEvent "pMaintenances"
+          $   maybe mempty (view pMaintenances)
+          <$> eSelectedUpdated
 
-      eSaveClicked <- mkButtonDynClassToggle (isRight <$> dEitherPlant)
-                                             "button is-primary"
-                                             "button is-disabled"
-                                             (RD.dynText "Save")
+        let dEitherPlant = do
+              eName       <- dName
+              _pDesc      <- dDesc
+              _pImage     <- dImage
+              maints      <- M.toList <$> dMaints
+              eDayPlanted <- dTimePlanted
+              pure
+                $   Plant 0
+                <$> eName
+                <*> pure _pDesc
+                <*> pure _pImage
+                <*> eDayPlanted
+                <*> pure (fst <$> maints)
+                <*> pure (snd <$> maints)
 
-  eSaved <- callback dEitherPlant eSaveClicked
+        eSaveClicked <- mkButtonDynClassToggle (isRight <$> dEitherPlant)
+                                               "button is-primary"
+                                               "button is-disabled"
+                                               (RD.dynText "Save")
 
-  let eClose = RD.ffilter isRight (RD.updated dEitherPlant) $> ()
+    eSaved <- callback dEitherPlant eSaveClicked
 
-  pure (eSaved, eClose)
+    let eClose = RD.ffilter isRight (RD.updated dEitherPlant) $> ()
+
+    pure (eSaved, eClose)
  where
-  box = fmap snd . Bw.box (RD.text "Add a new plant")
+  imageInput =
+    let settings = RD.def & RD.inputElementConfig_setValue .~ eImage
+        eImage   = maybe "" (fromMaybe "" . _pImage) <$> eSelectedUpdated
+    in  Bf.textInputNonEmpty settings "Image URL"
+  timePlantedInput eSave =
+    let settings     = RD.def & RD.inputElementConfig_setValue .~ eTimePlanted
+        eTimePlanted = maybe "" (show . _pDayPlanted) <$> eSelectedUpdated
+    in  Bf.textInputValidate settings
+                             "Date planted (YYYY-MM-DD)"
+                             eSave
+                             (first T.pack . readEither @Day . T.unpack)
+  descInput =
+    let settings = RD.def & RD.inputElementConfig_setValue .~ eDesc
+        eDesc    = maybe "" (fromMaybe "" . _pDesc) <$> eSelectedUpdated
+    in  Bf.textInputNonEmpty settings "Description"
+  nameInput eSave =
+    let settings = RD.def & RD.inputElementConfig_setValue .~ eName
+        eName    = maybe "" _pName <$> eSelectedUpdated
+    in  Bf.textInputValidate settings "Name" eSave validateName
+  box = fmap snd . Bw.box (RD.text "Add/Edit")
   validateName txt | T.null txt = Left "Name cannot be empty"
                    | otherwise  = Right txt
 
@@ -136,10 +159,15 @@ addPlantModal eModal callback = fmap fst . modalClose eModal . box $ do
 maintButtons
   :: forall t m
    . (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)
-  => m (RD.Dynamic t (Map MaintenanceType MaintenanceFreq))
-maintButtons = Tags.divClass "buttons" $ do
-  rec eMaintType <- mapM (mkButton' dMaints) allStats <&> RD.leftmost
-      dMaints    <- RD.foldDyn (M.alter rotate') mempty eMaintType
+  => RD.Event t Maintenances
+  -> m (RD.Dynamic t Maintenances)
+maintButtons eInitialMaints = Tags.divClass "buttons" $ do
+  rec dMaints <- RD.foldDyn (M.alter rotate')
+                            (traceShowId initMaints)
+                            eMaintType
+      eMaintType  <- mapM (mkButton' dMaints) allMTypes <&> RD.leftmost
+      bInitMaints <- RD.hold mempty eInitialMaints
+      initMaints  <- RD.sample bInitMaints
   pure dMaints
  where
   mkButton' dMaints mt =
@@ -152,7 +180,7 @@ maintButtons = Tags.divClass "buttons" $ do
                                      "button"
                                      dButtonTxt
 
-  allStats = enumFromTo @MaintenanceType minBound maxBound
+  allMTypes = enumFromTo @MaintenanceType minBound maxBound
   rotate' Nothing = Just minBound
   rotate' (Just mf) | mf == maxBound = Nothing
                     | otherwise      = Just $ succ mf
@@ -215,9 +243,10 @@ maintenanceModal dSelected = Tags.divClass "box" $ do
     eEditClick   <- Bw.faButton "fa fa-sliders"
     eDeleteClick <- Bw.faButton "fa fa-trash"
 
-    let bMaybeId = RD.current $ fmap (_pId . _fpdPlant) <$> dSelected
-        eEdit    = EditPlant <$> RD.tagMaybe bMaybeId eEditClick
-        eDelete  = DeletePlant <$> RD.tagMaybe bMaybeId eDeleteClick
+    let bMaybeId    = RD.current $ fmap (_pId . _fpdPlant) <$> dSelected
+        bMaybePlant = RD.current $ fmap _fpdPlant <$> dSelected
+        eEdit       = EditPlant <$> RD.tagMaybe bMaybePlant eEditClick
+        eDelete     = DeletePlant <$> RD.tagMaybe bMaybeId eDeleteClick
     pure . RD.leftmost $ [eEdit, eDelete]
   showSelection = RD.dyn $ dSelected <&> \fpd ->
     let mStatuses  = fromMaybe mempty $ fpd ^? _Just . fpdMStatuses

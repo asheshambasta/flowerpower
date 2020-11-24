@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveAnyClass #-}
@@ -10,6 +12,7 @@ module Data.Garden.Plant
   -- ** MaintenanceType of plants
   , MaintenanceType(..)
   , MaintenanceFreq(..)
+  , Maintenances
   , Maintenance(..)
   , freqDiffTime
   -- *** Status of maintenance.
@@ -81,14 +84,35 @@ deriveOpaleyeEnum ''MaintenanceType "maintenance_type" (Just . identity)
 data MaintenanceFreq = Week | Month | Year
                      deriving (Eq, Show, Enum, Ord, Bounded, Generic, ToJSON, FromJSON)
 
-deriveOpaleyeEnum ''MaintenanceFreq "maintenance_freq" (Just . identity)
+-- | Reports the frequencies that apply for a given value of elapsed days.
+freqsForDays
+  :: Time.Day -> Time.Day -> M.Map MaintenanceFreq Time.NominalDiffTime
+freqsForDays later earlier
+  | earlier < later = M.fromList $ forFreq Week <> forFreq Month <> forFreq Year
+  | otherwise       = mempty
+ where
+  days = Time.diffDays earlier later
+  forFreq f =
+    [ (f, freqDiffTime f * cycles)
+    | days `mod` freqDays f == 0
+    , let cycles = fromIntegral $ days `quot` fd
+          fd     = freqDays f
+    ]
 
 -- | Get the difftime by frequency.
 freqDiffTime :: MaintenanceFreq -> Time.NominalDiffTime
 freqDiffTime = \case
-  Week  -> 7 * 24 * 3600
-  Month -> 30 * freqDiffTime Week
-  Year  -> 12 * freqDiffTime Month
+  Week  -> freqDays Week * 24 * 3600
+  Month -> freqDays Month * freqDiffTime Week
+  Year  -> freqDays Year * freqDiffTime Month
+
+freqDays :: Num i => MaintenanceFreq -> i
+freqDays = \case
+  Week  -> 7
+  Month -> 30
+  Year  -> 365
+
+deriveOpaleyeEnum ''MaintenanceFreq "maintenance_freq" (Just . identity)
 
 data MaintenanceStatus = UnsafeDueIn MaintenanceFreq Time.NominalDiffTime
                        | UnsafeDueBy MaintenanceFreq (Maybe Time.NominalDiffTime)
@@ -137,13 +161,13 @@ data Plant' id name desc img time maint maintFreq = Plant
 makeLenses ''Plant'
 makeAdaptorAndInstance' ''Plant'
 
-pMaintenances :: Lens' Plant [Maintenance]
+pMaintenances :: Lens' Plant Maintenances
 pMaintenances = lens from' to'
  where
-  from' Plant {..} = zipWith Maintenance _pMaintenanceTypes _pMaintenanceFreqs
-  to' p ms =
-    let ms' = _mType <$> ms
-        fs' = _mFreq <$> ms
+  from' Plant {..} = M.fromList $ zip _pMaintenanceTypes _pMaintenanceFreqs
+  to' p (M.toList -> ms) =
+    let ms' = fst <$> ms
+        fs' = snd <$> ms
     in  p & pMaintenanceTypes .~ ms' & pMaintenanceFreqs .~ fs'
 
 type Plant
@@ -161,6 +185,8 @@ data Maintenance = Maintenance
   , _mFreq :: MaintenanceFreq
   }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+type Maintenances = M.Map MaintenanceType MaintenanceFreq
 
 makeLenses ''Maintenance
 
@@ -210,12 +236,13 @@ maintenanceStatuses
   :: Foldable f
   => [Maintenance] -- ^ List of maintenances to perform.
   -> f MaintenanceLog -- ^ Log of all performed maintenances. 
+  -> Time.Day -- ^ Day the plant was planted
   -> Time.UTCTime -- ^ The time at which to determine due maintenances.
   -> MaintenanceStatuses -- ^ Map containing all maintenance types and the difference of time since the last time they were performed.
-maintenanceStatuses maints (latestMaintenances -> latest) atTime = foldl'
-  determineStatus
-  mempty
-  maints
+maintenanceStatuses maints (latestMaintenances -> latest) dayPlanted atTime@Time.UTCTime { utctDay = atDay }
+  = let logBased         = foldl' determineStatus mempty maints
+        datePlantedBased = undefined
+    in  datePlantedBased <> logBased
  where
   determineStatus statuses Maintenance {..} = case M.lookup _mType latest of
     -- never performed. 
@@ -226,16 +253,21 @@ maintenanceStatuses maints (latestMaintenances -> latest) atTime = foldl'
             _mFreq
             (freqDiffTime _mFreq - timeSincePerformed)
     where addToStats v = M.insert _mType v statuses
+  reqFreqsForDays  = freqsForDays atDay dayPlanted
+  daysSincePlanted = Time.diffDays dayPlanted atDay
+  reqMaintsForDays =
+    [ (_mType, undefined) | Maintenance {..} <- maints, undefined ] -- _mFreq `elem` reqFreqsForDays
 
 -- | Get the maintenance statuses at the current time.
 -- See `maintenanceStatuses`
 maintenanceStatusesNow
   :: (MonadIO m, Foldable f)
-  => [Maintenance]
-  -> f MaintenanceLog
+  => [Maintenance] -- ^ Required maintenance & frequencies
+  -> f MaintenanceLog -- ^ Perfomed maintenance logs 
+  -> Time.Day -- ^ Day on which the plant was planted. 
   -> m MaintenanceStatuses
-maintenanceStatusesNow maints log' =
-  maintenanceStatuses maints log' <$> liftIO Time.getCurrentTime
+maintenanceStatusesNow maints log' dayPlanted =
+  maintenanceStatuses maints log' dayPlanted <$> liftIO Time.getCurrentTime
 
 -- | Full plant data: contains information about the plant as well its maintenance statuses.
 data FullPlantData = FullPlantData

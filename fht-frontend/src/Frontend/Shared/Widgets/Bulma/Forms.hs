@@ -68,6 +68,7 @@ textInputValidate conf label eValidate validate = do
 
   RD.holdDyn (Left "") eValidation
 
+-- | Creates a text input with some validation that results in a `Maybe Text`. 
 textInputMaybe
   :: (RD.DomBuilder t m, RD.MonadHold t m, MonadFix m, RD.PostBuild t m, Show a)
   => RD.InputElementConfig RD.EventResult t (RD.DomBuilderSpace m)

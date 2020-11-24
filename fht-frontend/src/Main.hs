@@ -29,7 +29,8 @@ main = mainWidgetWithBulma $ do
       let eAddPlantNav = RD.ffilter (== Nav.AddNew) eNav $> ()
           eNav         = RD.updated dNav
 
-      ePlantAdded   <- addPlantModal eAddPlantNav addPlant
+      ePlantAdded   <- addPlantModal eAddPlantNav RD.never addPlant
+      ePlantEdited  <- addPlantModal (eEdit $> ()) eEditMaybe editPlant
       ePlantDeleted <- deletePlant dDelete (eDelete $> ())
       ePostBuild    <- RD.getPostBuild
 
@@ -40,14 +41,18 @@ main = mainWidgetWithBulma $ do
                                        (Nav.dNavFilterPlants dNav)
                                        dPlants
 
-      let eSelected = preview _SelectPlant <$> ePlantSelectResult
-          eDelete   = RD.fmapMaybe (preview _DeletePlant) ePlantSelectResult
-          eEdit     = RD.fmapMaybe (preview _EditPlant) ePlantSelectResult
+      let eSelected  = preview _SelectPlant <$> ePlantSelectResult
+          eDelete    = RD.fmapMaybe (preview _DeletePlant) ePlantSelectResult
+          eEditMaybe = preview _EditPlant <$> ePlantSelectResult
+          eEdit      = RD.fmapMaybe identity eEditMaybe
+          dSelected  = fmap _fpdPlant <$> dSelectedFpd
 
-      dDelete   <- RD.holdDyn (PlantId 0) eDelete <&> fmap Api.QParamSome
+      dEdit        <- RD.holdDyn Nothing eEditMaybe
 
-      dSelected <- RD.holdDyn initSelected
-                              (preview _SelectPlant <$> ePlantSelectResult)
+      dDelete      <- RD.holdDyn (PlantId 0) eDelete <&> fmap Api.QParamSome
+
+      dSelectedFpd <- RD.holdDyn initSelected
+                                 (preview _SelectPlant <$> ePlantSelectResult)
   pure ()
   where initSelected = Nothing -- headMay plants
 
@@ -66,9 +71,10 @@ getPlants dNav eRefresh = do
 
 listPlants :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.ListPlants t m
 addPlant :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.CreatePlant t m
+editPlant :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.CreatePlant t m
 deletePlant :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.DeletePlant t m
 
-(listPlants :<|> addPlant :<|> _ :<|> (_ :<|> deletePlant)) =
+(listPlants :<|> addPlant :<|> editPlant :<|> (_ :<|> deletePlant)) =
   Api.plantApiClient baseUrl
   where baseUrl = RD.constDyn $ Api.BaseFullUrl Api.Http "localhost" 3000 ""
 
