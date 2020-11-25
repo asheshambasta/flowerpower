@@ -11,16 +11,14 @@
 module Backend.Garden.Plant
   ( StoredPlant'(..)
   , StoredPlant
-  , DBUpdate(AddPlant, DeletePlant)
+  , DBUpdate(AddPlant, UpdatePlant, DeletePlant)
   , DBSelect(SearchByName, GetAllPlants)
   -- * Getting data
   , populatePlantData
   )
 where
 
-import           Backend.Garden.Plant.Types     ( PlantIdF
-                                                , PlantStorageErr(..)
-                                                )
+import           Backend.Garden.Plant.Types     ( PlantIdF )
 import           Polysemy.Error                as E
 import qualified "prelude-polysemy" Prelude.Polysemy.ID
                                                as ID
@@ -71,6 +69,7 @@ instance DBStorage StoredPlant where
                             | GetAllPlants
   
   data DBUpdate StoredPlant = AddPlant Plant
+                            | UpdatePlant Plant
                             | DeletePlant PlantId
 
   selectByIds ids = mkIdMap <$> trSelect (proc () -> byIdsQ -< ids)
@@ -91,15 +90,11 @@ instance DBStorage StoredPlant where
                             [toFields . StoredPlant @Plant $ p & pId .~ pid]
                             (view $ unStoredPlant . pId)
 
-
-     --  selectExistingId
-     --  >>= maybe insertRow (Err.throwKnownError . AlreadyExists)
-     -- where
-     --  selectExistingId = headMay <$> trSelect
-     --    (proc () -> (byIdsQ >>^ view (unStoredPlant . pId)) -< [_pId])
-     --  insertRow = trInsertManyReturning plantTable
-     --                                    [toFields $ StoredPlant p]
-     --                                    (view $ unStoredPlant . pId)
+    UpdatePlant (toFields @StoredPlant @StoredPlantF . StoredPlant -> p@(StoredPlant Plant{..}))
+      -> trUpdateReturning plantTable
+                           (const p) -- set the whole row
+                           (view $ unStoredPlant . pId . to (.=== _pId))
+                           (view $ unStoredPlant . pId)
 
     DeletePlant id -> trDeleteReporting
       id

@@ -24,37 +24,36 @@ import           Protolude
 
 main :: IO ()
 main = mainWidgetWithBulma $ do
-  rec dNav <- navBar (length <$> dPlants)
+  rec
+    dNav <- navBar (length <$> dPlants)
 
-      let eAddPlantNav = RD.ffilter (== Nav.AddNew) eNav $> ()
-          eNav         = RD.updated dNav
+    let eAddPlantNav = RD.ffilter (== Nav.AddNew) eNav $> ()
+        eNav         = RD.updated dNav
 
-      ePlantAdded   <- addPlantModal eAddPlantNav RD.never addPlant
-      ePlantEdited  <- addPlantModal (eEdit $> ()) eEditMaybe editPlant
-      ePlantDeleted <- deletePlant dDelete (eDelete $> ())
-      ePostBuild    <- RD.getPostBuild
+    ePlantAdded   <- addPlantModal eAddPlantNav RD.never addPlant
+    ePlantEdited  <- addPlantModal (eEdit $> ()) (Just <$> eEdit) editPlant
+    ePlantDeleted <- deletePlant dDelete (eDelete $> ())
+    ePostBuild    <- RD.getPostBuild
 
-      let eRefreshPlants = [ePlantAdded $> (), ePostBuild, ePlantDeleted $> ()]
+    let eRefreshPlants = RD.leftmost
+          [ ePlantAdded $> ()
+          , ePlantDeleted $> ()
+          , ePlantEdited $> ()
+          , ePostBuild
+          ]
 
-      dPlants            <- getPlants dNav . RD.leftmost $ eRefreshPlants
-      ePlantSelectResult <- dispPlants initSelected
-                                       (Nav.dNavFilterPlants dNav)
-                                       dPlants
+    dPlants            <- getPlants dNav eRefreshPlants
+    ePlantSelectResult <- dispPlants Nothing (Nav.dNavFilterPlants dNav) dPlants
 
-      let eSelected  = preview _SelectPlant <$> ePlantSelectResult
-          eDelete    = RD.fmapMaybe (preview _DeletePlant) ePlantSelectResult
-          eEditMaybe = preview _EditPlant <$> ePlantSelectResult
-          eEdit      = RD.fmapMaybe identity eEditMaybe
-          dSelected  = fmap _fpdPlant <$> dSelectedFpd
+    let eSelected = preview _SelectPlant <$> ePlantSelectResult
+        eDelete   = RD.fmapMaybe (preview _DeletePlant) ePlantSelectResult
+        -- the edited plant event can contain a `Maybe Plant`; however, the event to open the edit modal
+        -- must've definitely been triggered with a plant in edit mode.
+        eEdit     = RD.fmapMaybe (preview _EditPlant) ePlantSelectResult
 
-      dEdit        <- RD.holdDyn Nothing eEditMaybe
+    dDelete <- RD.holdDyn (PlantId 0) eDelete <&> fmap Api.QParamSome
 
-      dDelete      <- RD.holdDyn (PlantId 0) eDelete <&> fmap Api.QParamSome
-
-      dSelectedFpd <- RD.holdDyn initSelected
-                                 (preview _SelectPlant <$> ePlantSelectResult)
   pure ()
-  where initSelected = Nothing -- headMay plants
 
 getPlants
   :: (RD.MonadWidget t m, RD.MonadHold t m)

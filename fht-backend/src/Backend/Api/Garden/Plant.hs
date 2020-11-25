@@ -37,7 +37,14 @@ plantApiServerT
    . Members '[ID , Error KnownError , Transaction , Reader Logger] r
   => ServerT PlantApi (Sem r)
 plantApiServerT =
-  searchByName :<|> addPlant :<|> undefined :<|> (addLogs :<|> deletePlant)
+  searchByName :<|> addPlant :<|> updatePlant :<|> (addLogs :<|> deletePlant)
+
+updatePlant
+  :: forall r
+   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
+  => Plant
+  -> Sem r FullPlantData
+updatePlant = dbUpdate . UpdatePlant >=> getPlant . headMay
 
 addPlant
   :: forall r
@@ -45,19 +52,22 @@ addPlant
   => Plant
   -> Sem r FullPlantData
 addPlant = dbUpdate . AddPlant >=> getPlant . headMay
+
+getPlant
+  :: forall r
+   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
+  => Maybe PlantId
+  -> Sem r FullPlantData
+getPlant mid =
+  selectByIds mid
+    >>= populatePlantData
+    .   fmap _unStoredPlant
+    .   headMay
+    .   M.elems
+    >>= maybe (notFound mid) pure
  where
-  getPlant mid =
-    selectByIds mid
-      >>= populatePlantData
-      .   fmap _unStoredPlant
-      .   headMay
-      .   M.elems
-      >>= maybe (notFound mid) pure
   notFound =
-    throwKnownError
-      . StorageError
-      . mappend "Unable to get just stored plant:"
-      . show
+    throwKnownError . StorageError . mappend "Unable to get plant:" . show
 
 searchByName
   :: forall r
