@@ -5,7 +5,7 @@ module Frontend.Garden.Plant
   ( plantCard
   , dispPlants
   , maintenanceModal
-  , addPlantModal
+  , addEditModal
   , PlantSelectResult(..)
   , _AddLogsNow
   , _DeletePlant
@@ -83,36 +83,30 @@ plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) = do
   -- we want to display specialised styles for plants that contain dues.
   containsDues' = containsDues statuses
 
-addPlantModal
+addEditModal
   :: forall a t m
    . (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m)
   => Event t ()
-  -> Event t (Maybe Plant)
+  -> Maybe Plant
   -> (Dynamic t (Either Text Plant) -> Event t () -> m (Event t a))
   -> m (Event t a)
-addPlantModal eModal (traceEvent "eSelected" -> eSelected) callback =
+addEditModal eModal mSelected callback =
   fmap fst . modalClose eModal . box $ do
 
     rec dName        <- nameInput eSaveClicked
         dDesc        <- descInput eSaveClicked
         dImage       <- imageInput eSaveClicked
         dTimePlanted <- timePlantedInput eSaveClicked
-        dPlantId     <- holdDyn Nothing (fmap _pId <$> eSelected)
-        dMaints      <-
-          maintButtons
-          $   traceEvent "pMaintenances"
-          $   maybe mempty (view pMaintenances)
-          <$> eSelected
+        dMaints      <- maintButtons (view pMaintenances <$> mSelected)
 
         let dEitherPlant = do
               eName       <- dName
-              plantId     <- dPlantId
               _pDesc      <- dDesc
               _pImage     <- dImage
               maints      <- M.toList <$> dMaints
               eDayPlanted <- dTimePlanted
               pure
-                $   Plant (fromMaybe 0 plantId)
+                $   Plant (maybe 0 _pId mSelected)
                 <$> eName
                 <*> pure _pDesc
                 <*> pure _pImage
@@ -132,23 +126,23 @@ addPlantModal eModal (traceEvent "eSelected" -> eSelected) callback =
     pure (eSaved, eClose)
  where
   imageInput =
-    let settings = def & inputElementConfig_setValue .~ eImage
-        eImage   = maybe "" (fromMaybe "" . _pImage) <$> eSelected
+    let settings = def & inputElementConfig_initialValue .~ img
+        img      = fromMaybe "" $ mSelected >>= _pImage
     in  Bf.textInputNonEmpty settings "Image URL"
   timePlantedInput eSave =
-    let settings     = def & inputElementConfig_setValue .~ eTimePlanted
-        eTimePlanted = maybe "" (show . _pDayPlanted) <$> eSelected
+    let settings    = def & inputElementConfig_initialValue .~ timePlanted
+        timePlanted = maybe "" (show . _pDayPlanted) mSelected
     in  Bf.textInputValidate settings
                              "Date planted (YYYY-MM-DD)"
                              eSave
                              (first T.pack . readEither @Day . T.unpack)
   descInput =
-    let settings = def & inputElementConfig_setValue .~ eDesc
-        eDesc    = maybe "" (fromMaybe "" . _pDesc) <$> eSelected
+    let settings = def & inputElementConfig_initialValue .~ desc
+        desc     = maybe "" (fromMaybe "" . _pDesc) mSelected
     in  Bf.textInputNonEmpty settings "Description"
   nameInput eSave =
-    let settings = def & inputElementConfig_setValue .~ eName
-        eName    = maybe "" _pName <$> eSelected
+    let settings = def & inputElementConfig_initialValue .~ name
+        name     = maybe "" _pName mSelected
     in  Bf.textInputValidate settings "Name" eSave validateName
   box = fmap snd . Bw.box (text "Add/Edit")
   validateName txt | T.null txt = Left "Name cannot be empty"
@@ -158,15 +152,14 @@ addPlantModal eModal (traceEvent "eSelected" -> eSelected) callback =
 maintButtons
   :: forall t m
    . (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m)
-  => Event t Maintenances
+  => Maybe Maintenances
   -> m (Dynamic t Maintenances)
-maintButtons (traceEvent "eInitialMaints" -> eInitialMaints) =
-  Tags.divClass "buttons" $ do
-    rec dMaints     <- foldDyn (M.alter rotate') initMaints eMaintType
-        eMaintType  <- mapM (mkButton' dMaints) allMTypes <&> leftmost
-        bInitMaints <- hold mempty eInitialMaints
-        initMaints  <- sample bInitMaints
-    pure dMaints
+maintButtons mInitialMaints = Tags.divClass "buttons" $ do
+  rec dMaints <- foldDyn (M.alter rotate')
+                         (fromMaybe mempty mInitialMaints)
+                         eMaintType
+      eMaintType <- mapM (mkButton' dMaints) allMTypes <&> leftmost
+  pure dMaints
  where
   mkButton' dMaints mt =
     let dFreqMaybe  = M.lookup mt <$> dMaints
