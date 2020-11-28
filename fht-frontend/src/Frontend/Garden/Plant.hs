@@ -56,15 +56,16 @@ plantCard
   => Dynamic t (Maybe FullPlantData) -- ^ A dynamic representing the currently selected plant.
   -> FullPlantData -- ^ Plant to display
   -> m (Event t PlantSelectResult) -- ^ Event with clicked plant.
-plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) = do
-  eClickType <- clickEvents $ fst <$> plantTile
-  -- for any kind of click, we do want this plant to be selected. 
-  let eSelected  = eClickType $> fpd
-      -- and we want to display the modal if the user has double clicked.
-      eShowModal = ffilter (== SingleClick) eClickType $> ()
-  eModalResult <- fst <$> modalClose eShowModal (maintenanceModal dSelected)
-  pure $ traceEvent "PlantSelectResult" $ leftmost
-    [SelectPlant <$> eSelected, eModalResult]
+plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) =
+  Tags.divClass "column is-narrow" $ do
+    eClickType <- clickEvents $ fst <$> plantTile
+    -- for any kind of click, we do want this plant to be selected. 
+    let eSelected  = eClickType $> fpd
+        -- and we want to display the modal if the user has double clicked.
+        eShowModal = ffilter (== SingleClick) eClickType $> ()
+    eModalResult <- fst <$> modalClose eShowModal (maintenanceModal dSelected)
+    pure $ traceEvent "PlantSelectResult" $ leftmost
+      [SelectPlant <$> eSelected, eModalResult]
  where
   plantTile =
     elClass' "div" "tile is-parent"
@@ -206,7 +207,7 @@ dispPlants
   -> Dynamic t [FullPlantData] -- ^ Current list of plants 
   -> m (Event t PlantSelectResult) -- ^ Event with the selected plant.
 dispPlants mInitSelected dFilter dAllPlants =
-  Bw.sectionContainer . Bw.tileSection $ do
+  Tags.divClass "columns is-mobile is-multiline is-vcentered" $ do
     rec
       dSelectedPlant <- holdDyn mInitSelected (preview _SelectPlant <$> ePlant)
       ePlants        <- fmap leftmost
@@ -240,7 +241,7 @@ maintenanceModal dSelected = Tags.divClass "box" $ do
  where
   editDeleteButtons = BTags.buttons $ do
      -- edit & delete buttons button 
-    eEditClick   <- Bw.faButton "fa fa-sliders"
+    eEditClick   <- Bw.faButton "fa fa-pencil"
     eDeleteClick <- Bw.faButton "fa fa-trash"
 
     let bMaybeId    = current $ fmap (_pId . _fpdPlant) <$> dSelected
@@ -269,13 +270,13 @@ displayMaints
   -> MaintenanceStatuses
   -> m (Event t PlantSelectResult)
 displayMaints id (M.toList -> maints)
-  | not (null maints) = do
+  | not (null dueMaints) = do
     dSelected <- multiSelect
     eDone     <- doneButton
     time      <- liftIO getCurrentTime
     let bSelected = current dSelected
         eSelected = tag bSelected eDone
-        eLog      = eSelected <&> \mts -> flip MaintenanceLog time <$> mts
+        eLog      = eSelected <&> fmap (`MaintenanceLog` time)
     pure $ AddLogsNow id <$> eLog
   | otherwise = do
     Tags.divClass "is-success" . text $ "No required maintenances found."

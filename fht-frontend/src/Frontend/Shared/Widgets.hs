@@ -18,12 +18,13 @@ utf8Charset :: forall x . Dom.Widget x ()
 utf8Charset = emptyEl "meta" $ "charset" =: "utf-8"
 
 -- | Adds fontawesome.
--- <script defer src="https://use.fontawesome.com/releases/v5.14.0/js/all.js"></script>
+-- <script src="https://kit.fontawesome.com/a989d86eb6.js" crossorigin="anonymous"></script>
 fontAwesome :: forall x . Dom.Widget x ()
 fontAwesome = emptyEl "script" attrs
  where
   attrs =
     ("defer" =: "")
+      <> ("crossorigin" =: "anonymous")
       <> ("src" =: "https://use.fontawesome.com/releases/v5.14.0/js/all.js")
 
 -- | Make responsive

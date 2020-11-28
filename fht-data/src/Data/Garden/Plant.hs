@@ -1,4 +1,5 @@
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -10,6 +11,8 @@ module Data.Garden.Plant
   , PlantId'(..)
   , PlantId
   , FullPlantData(..)
+  , Earlier(..)
+  , Later(..)
   -- ** MaintenanceType of plants
   , MaintenanceType(..)
   , MaintenanceFreq(..)
@@ -88,24 +91,22 @@ deriveOpaleyeEnum ''MaintenanceType "maintenance_type" (Just . identity)
 data MaintenanceFreq = Week | Month | Year
                      deriving (Eq, Show, Enum, Ord, Bounded, Generic, ToJSON, FromJSON)
 
+newtype Earlier d = Earlier d
+                  deriving (Eq, Show) via d
+newtype Later d = Later d
+                deriving (Eq, Show) via d
+
 -- | Reports the frequencies that apply for a given value of elapsed days.
 diffDaysAsStatus
-  :: MaintenanceFreq -> Time.Day -> Time.Day -> Maybe MaintenanceStatus
-diffDaysAsStatus f later earlier
-  | days `div` freqDays f > 0
-  = let cycles = fromIntegral $ days `quot` fd
-        fd     = freqDays f
-    in  Just $ maintenanceStatus f (freqDiffTime f * cycles)
-  | otherwise
-  = Nothing
-  where days = Time.diffDays earlier later
+  :: MaintenanceFreq -> Later Time.Day -> Earlier Time.Day -> MaintenanceStatus
+diffDaysAsStatus f (Later later) (Earlier earlier) = maintenanceStatus
+  f
+  diffTime
+  where diffTime = fromInteger (Time.diffDays later earlier) * Time.nominalDay
 
 -- | Get the difftime by frequency.
 freqDiffTime :: MaintenanceFreq -> Time.NominalDiffTime
-freqDiffTime = \case
-  Week  -> freqDays Week * 24 * 3600
-  Month -> freqDays Month * freqDiffTime Week
-  Year  -> freqDays Year * freqDiffTime Month
+freqDiffTime f = freqDays f * Time.nominalDay
 
 freqDays :: Num i => MaintenanceFreq -> i
 freqDays = \case
@@ -130,9 +131,10 @@ pattern DueBy f t <- UnsafeDueBy f t where
 -- | Smart constructor for maintenance statuses.
 maintenanceStatus
   :: MaintenanceFreq -> Time.NominalDiffTime -> MaintenanceStatus
-maintenanceStatus f t | t < 0     = UnsafeDueIn f t
-                      | otherwise = UnsafeDueBy f (Just t)
-
+maintenanceStatus f t
+  | freqTime <= t = UnsafeDueBy f (Just $ freqTime - (t - freqTime))
+  | otherwise     = UnsafeDueIn f (freqTime - t)
+  where freqTime = freqDiffTime f
 
 makePrisms ''MaintenanceStatus
 deriveOpaleyeEnum ''MaintenanceFreq "maintenance_freq" (Just . identity)
@@ -249,7 +251,7 @@ For all the known latest maintenances, we'd like to see if each of the given mai
 If they aren't, it just means the maintenance was never performed. If they are, we determine based on the time of performing the maintenance.
 -}
 maintenanceStatuses
-  :: Foldable f
+  :: (Foldable f, Show (f MaintenanceLog))
   => [Maintenance] -- ^ List of maintenances to perform.
   -> f MaintenanceLog -- ^ Log of all performed maintenances. 
   -> Time.Day -- ^ Day the plant was planted
@@ -257,7 +259,7 @@ maintenanceStatuses
   -> MaintenanceStatuses -- ^ Map containing all maintenance types and the difference of time since the last time they were performed.
 maintenanceStatuses maints (latestMaintenances -> latest) dayPlanted atTime@Time.UTCTime { utctDay = atDay }
   = let logBased = foldl' determineStatus mempty maints
-    in  datePlantedBased <> logBased
+    in  logBased <> datePlantedBased
  where
   determineStatus statuses Maintenance {..} = case M.lookup _mType latest of
     -- never performed: we rely on datePlantedBased then. 
@@ -270,15 +272,14 @@ maintenanceStatuses maints (latestMaintenances -> latest) dayPlanted atTime@Time
     where addToStats v = M.insert _mType v statuses
   datePlantedBased =
     M.fromList
-      . catMaybes
-      $ [ (_mType, ) <$> diffDaysAsStatus _mFreq dayPlanted atDay
+      $ [ (_mType, diffDaysAsStatus _mFreq (Later atDay) (Earlier dayPlanted))
         | Maintenance {..} <- maints
         ]
 
 -- | Get the maintenance statuses at the current time.
 -- See `maintenanceStatuses`
 maintenanceStatusesNow
-  :: (MonadIO m, Foldable f)
+  :: (MonadIO m, Foldable f, Show (f MaintenanceLog))
   => [Maintenance] -- ^ Required maintenance & frequencies
   -> f MaintenanceLog -- ^ Perfomed maintenance logs 
   -> Time.Day -- ^ Day on which the plant was planted. 

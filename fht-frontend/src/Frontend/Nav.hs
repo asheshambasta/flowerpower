@@ -85,7 +85,7 @@ navTopRight initial eNavLeft = Tags.divClass "level-right" $ do
 
     eAdd <- levelItemP $ mkButtonConstTextClass "button is-success" mempty "Add"
 
-  RD.holdUniqDyn dNav
+  pure dNav
  where
   levelItemP     = Tags.pClass "level-item"
   levelItemClick = Tags.pClass "level-item" . clickEvent . fmap fst

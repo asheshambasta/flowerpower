@@ -30,7 +30,9 @@ main = mainWidgetWithBulma $ do
     let eAddPlantNav = RD.ffilter (== Nav.AddNew) eNav $> ()
         eNav         = RD.updated dNav
 
-    ePlantAdded   <- addPlantModal eAddPlantNav RD.never addPlant
+    ePlantAdded <- addPlantModal (RD.traceEvent "eAddPlantNav" eAddPlantNav)
+                                 RD.never
+                                 addPlant
     ePlantEdited  <- addPlantModal (eEdit $> ()) (Just <$> eEdit) editPlant
     ePlantDeleted <- deletePlant dDelete (eDelete $> ())
     eLogsAdded    <- addLogs dAddLogsId dAddLogsLogs (eAddLogs $> ())
