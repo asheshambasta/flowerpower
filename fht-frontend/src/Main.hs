@@ -2,12 +2,10 @@
 {-# LANGUAGE RecursiveDo #-}
 module Main
   ( main
-  , plant0
   )
 where
 
 import "servant" Servant.API
-import           Data.Time
 import qualified "fht-api" Api.Garden.Plant    as Api
 import qualified Data.Map                      as M
 import           Frontend.Shared.Widgets.Bulma  ( sectionContainer
@@ -32,14 +30,8 @@ main = mainWidgetWithBulma $ do
     let eAddPlantNav = RD.ffilter (== Nav.AddNew) eNav $> ()
         eNav         = RD.updated dNav
 
-    ePlantAdded  <- addEditModal eAddPlantNav Nothing addPlant
-    -- ePlantEdited  <- addEditMaybeModal (eEditMaybe $> ()) eEditMaybe editPlant
-    ePlantEdited <- fmap RD.coincidence . RD.dyn $ dEditMaybe <&> \case
-      Nothing -> pure RD.never
-      Just p ->
-        traceM "HERE"
-          >> addEditModal (RD.traceEvent "FIRED" eEdit $> ()) (Just p) editPlant
-
+    ePlantAdded   <- addPlantModal eAddPlantNav RD.never addPlant
+    ePlantEdited  <- addPlantModal (eEdit $> ()) (Just <$> eEdit) editPlant
     ePlantDeleted <- deletePlant dDelete (eDelete $> ())
     ePostBuild    <- RD.getPostBuild
 
@@ -53,12 +45,13 @@ main = mainWidgetWithBulma $ do
     dPlants            <- getPlants dNav eRefreshPlants
     ePlantSelectResult <- dispPlants Nothing (Nav.dNavFilterPlants dNav) dPlants
 
-    let eDelete    = RD.fmapMaybe (preview _DeletePlant) ePlantSelectResult
-        eEditMaybe = preview _EditPlant <$> ePlantSelectResult
-        eEdit      = RD.fmapMaybe identity eEditMaybe
+    let eSelected = preview _SelectPlant <$> ePlantSelectResult
+        eDelete   = RD.fmapMaybe (preview _DeletePlant) ePlantSelectResult
+        -- the edited plant event can contain a `Maybe Plant`; however, the event to open the edit modal
+        -- must've definitely been triggered with a plant in edit mode.
+        eEdit     = RD.fmapMaybe (preview _EditPlant) ePlantSelectResult
 
-    dDelete    <- RD.holdDyn (PlantId 0) eDelete <&> fmap Api.QParamSome
-    dEditMaybe <- RD.holdDyn Nothing eEditMaybe
+    dDelete <- RD.holdDyn (PlantId 0) eDelete <&> fmap Api.QParamSome
 
   pure ()
 
@@ -92,17 +85,20 @@ navBar _navTotalPlants =
   Tags.sectionClass "section"
     . Tags.navClass "navbar-menu"
     . Tags.divClass "container"
-    $ Nav.top Nav.NavSettings { _navInitial = def, .. }
+    $ do
+  -- _navTotalPlants <- RD.holdDyn 0 RD.never
+        let navSettings = Nav.NavSettings { _navInitial = def, .. }
+        Nav.top navSettings
 
-plant0 :: Plant
-plant0 = Plant { _pId               = 0
-               , _pName             = "Japanese Maple"
-               , _pDesc = Just "Maple from Japan, bought from 'Art of flower'"
-               , _pImage            = Nothing
-               , _pDayPlanted       = ModifiedJulianDay 0
-               , _pMaintenanceTypes = [Pruning]
-               , _pMaintenanceFreqs = [Month]
-               }
+-- plant0 :: Plant
+-- plant0 = Plant { _pId               = 0
+--                , _pName             = "Japanese Maple"
+--                , _pDesc = Just "Maple from Japan, bought from 'Art of flower'"
+--                , _pImage            = Nothing
+--                , _pTimePlanted      = Nothing
+--                , _pMaintenanceTypes = mempty
+--                , _pMaintenanceFreqs = mempty
+--                }
 
 -- plant1 :: Plant
 -- plant1 = Plant { _pId               = 1
