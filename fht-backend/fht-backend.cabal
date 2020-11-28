@@ -53,6 +53,7 @@ executable fht-backend
 
     Backend.Garden.Plant 
     Backend.Garden.Plant.Types
+    Backend.Garden.Plant.Logs
 
     Backend.Runtime
     -- API modules

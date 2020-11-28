@@ -33,12 +33,14 @@ main = mainWidgetWithBulma $ do
     ePlantAdded   <- addPlantModal eAddPlantNav RD.never addPlant
     ePlantEdited  <- addPlantModal (eEdit $> ()) (Just <$> eEdit) editPlant
     ePlantDeleted <- deletePlant dDelete (eDelete $> ())
+    eLogsAdded    <- addLogs dAddLogsId dAddLogsLogs (eAddLogs $> ())
     ePostBuild    <- RD.getPostBuild
 
     let eRefreshPlants = RD.leftmost
           [ ePlantAdded $> ()
           , ePlantDeleted $> ()
           , ePlantEdited $> ()
+          , eLogsAdded $> ()
           , ePostBuild
           ]
 
@@ -50,6 +52,11 @@ main = mainWidgetWithBulma $ do
         -- the edited plant event can contain a `Maybe Plant`; however, the event to open the edit modal
         -- must've definitely been triggered with a plant in edit mode.
         eEdit     = RD.fmapMaybe (preview _EditPlant) ePlantSelectResult
+        eAddLogs  = RD.fmapMaybe (preview _AddLogsNow) ePlantSelectResult
+
+    dAddLogsId   <- RD.holdDyn Api.QNone (Api.QParamSome . fst <$> eAddLogs)
+    dAddLogsLogs <- RD.holdDyn (Left "No logs to add")
+                               (Right . snd <$> eAddLogs)
 
     dDelete <- RD.holdDyn (PlantId 0) eDelete <&> fmap Api.QParamSome
 
@@ -70,10 +77,11 @@ getPlants dNav eRefresh = do
 
 listPlants :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.ListPlants t m
 addPlant :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.CreatePlant t m
+addLogs :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.AddLog t m
 editPlant :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.CreatePlant t m
 deletePlant :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.DeletePlant t m
 
-(listPlants :<|> addPlant :<|> editPlant :<|> (_ :<|> deletePlant)) =
+(listPlants :<|> addPlant :<|> editPlant :<|> (addLogs :<|> deletePlant)) =
   Api.plantApiClient baseUrl
   where baseUrl = RD.constDyn $ Api.BaseFullUrl Api.Http "localhost" 3000 ""
 

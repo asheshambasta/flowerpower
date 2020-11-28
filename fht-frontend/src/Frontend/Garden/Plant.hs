@@ -15,7 +15,9 @@ module Frontend.Garden.Plant
   )
 where
 
-import           Data.Time                      ( Day )
+import           Data.Time                      ( Day
+                                                , getCurrentTime
+                                                )
 import qualified Data.Text                     as T
 import qualified Data.Map                      as M
 import           Lib.Reflex.Buttons
@@ -40,7 +42,7 @@ import qualified "bulmex" Reflex.Bulmex.Tag.Bulma
                                                as BTags
 import "reflex-dom-helpers" Reflex.Tags        as Tags
 
-data PlantSelectResult = AddLogsNow [MaintenanceType]
+data PlantSelectResult = AddLogsNow PlantId [MaintenanceLog]
                       | DeletePlant PlantId
                       | EditPlant Plant
                       | SelectPlant FullPlantData
@@ -50,7 +52,7 @@ makePrisms ''PlantSelectResult
 
 -- | Display a plant as a Bulma card. Events are fired on each click.
 plantCard
-  :: (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m)
+  :: (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m, MonadIO m)
   => Dynamic t (Maybe FullPlantData) -- ^ A dynamic representing the currently selected plant.
   -> FullPlantData -- ^ Plant to display
   -> m (Event t PlantSelectResult) -- ^ Event with clicked plant.
@@ -198,7 +200,7 @@ duesIndicator containsDues'
 -- | Display a list of dynamic plants.
 dispPlants
   :: forall t m
-   . (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m)
+   . (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m, MonadIO m)
   => Maybe FullPlantData -- ^ An optional, initially selected plant.
   -> Dynamic t (FullPlantData -> Bool) -- ^ Filter plants
   -> Dynamic t [FullPlantData] -- ^ Current list of plants 
@@ -214,7 +216,7 @@ dispPlants mInitSelected dFilter dAllPlants =
 
 dePlants'
   :: forall t m
-   . (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m)
+   . (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m, MonadIO m)
   => Dynamic t (Maybe FullPlantData)
   -> Dynamic t (FullPlantData -> Bool) -- ^ Filter plants
   -> Dynamic t [FullPlantData]
@@ -227,7 +229,7 @@ dePlants' dSelectedPlant dFilter dAllPlants =
 -- Requires a dynamic indicating the currently selected plant: can be nothing if no plant is selected.
 maintenanceModal
   :: forall t m
-   . (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m)
+   . (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m, MonadIO m)
   => Dynamic t (Maybe FullPlantData)
   -> m (Event t PlantSelectResult, Event t ()) -- ^ Event indicating which maintenance log(s) the user has marked completed.
 maintenanceModal dSelected = Tags.divClass "box" $ do
@@ -248,6 +250,7 @@ maintenanceModal dSelected = Tags.divClass "box" $ do
     pure . leftmost $ [eEdit, eDelete]
   showSelection = dyn $ dSelected <&> \fpd ->
     let mStatuses  = fromMaybe mempty $ fpd ^? _Just . fpdMStatuses
+        mId        = fpd ^? _Just . fpdPlant . pId
         hasPending = containsDues mStatuses
         maintenanceNeededText =
           if hasPending then "Needs maintenance." else "All good!"
@@ -255,20 +258,25 @@ maintenanceModal dSelected = Tags.divClass "box" $ do
         subtitle = text maintenanceNeededText -- fpd ^. fpdPlant . pName
     in  do
           Bw.box title subtitle
-          displayMaints mStatuses
+          case mId of
+            Just id -> displayMaints id mStatuses
+            Nothing -> pure never
 
 displayMaints
   :: forall t m
-   . (DomBuilder t m, MonadHold t m, MonadFix m)
-  => MaintenanceStatuses
+   . (DomBuilder t m, MonadHold t m, MonadFix m, MonadIO m)
+  => PlantId
+  -> MaintenanceStatuses
   -> m (Event t PlantSelectResult)
-displayMaints (M.toList -> maints)
+displayMaints id (M.toList -> maints)
   | not (null maints) = do
     dSelected <- multiSelect
     eDone     <- doneButton
+    time      <- liftIO getCurrentTime
     let bSelected = current dSelected
         eSelected = tag bSelected eDone
-    pure $ AddLogsNow <$> eSelected
+        eLog      = eSelected <&> \mts -> flip MaintenanceLog time <$> mts
+    pure $ AddLogsNow id <$> eLog
   | otherwise = do
     Tags.divClass "is-success" . text $ "No required maintenances found."
     pure never

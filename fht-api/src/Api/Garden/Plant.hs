@@ -46,7 +46,7 @@ type PlantApi = ApiV1 :> "plants" :> ( QueryParam "name" Text :> Get '[JSON] [Pl
                                      )
 
 -- | Per plant api.
-type PerIdApi = PlantIdQueryParam :> ReqBody '[JSON] [Plant.MaintenanceLog] :> Put '[JSON] Plant.FullPlantData
+type PerIdApi = PlantIdQueryParam :> "logs" :> ReqBody '[JSON] [Plant.MaintenanceLog] :> Put '[JSON] Plant.FullPlantData
                  :<|> PlantIdQueryParam :> DeleteNoContent '[JSON] NoContent
 
 type ListPlants t m

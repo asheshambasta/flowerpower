@@ -18,7 +18,9 @@ module Backend.Garden.Plant
   )
 where
 
+import qualified Data.Map                      as M
 import           Backend.Garden.Plant.Types     ( PlantIdF )
+import qualified Backend.Garden.Plant.Logs     as Logs
 import           Polysemy.Error                as E
 import qualified "prelude-polysemy" Prelude.Polysemy.ID
                                                as ID
@@ -62,6 +64,7 @@ instance DBIdentity StoredPlant where
 instance DBStorage StoredPlant where
 
   type UpdateConstraints StoredPlant = '[E.Error Err.KnownError , ID.ID]
+  type SelectConstraints StoredPlant = '[E.Error Err.KnownError , Embed IO]
 
   type DBError StoredPlant = Void
   
@@ -104,10 +107,28 @@ instance DBStorage StoredPlant where
 -- | Get full plant data
 -- TODO: implement
 populatePlantData
-  :: (Foldable f, Functor f, SelectOf StoredPlant r)
+  :: ( Foldable f
+     , Functor f
+     , Traversable f
+     , SelectOf StoredPlant r
+     , SelectOf Logs.StoredLog r
+     )
   => f Plant
   -> Sem r (f FullPlantData)
-populatePlantData plants = pure $ (`FullPlantData` mempty) <$> plants
+populatePlantData ps = do
+  logs <- dbSelect . Logs.GetForPlants $ ids
+  mapM (addLogs logs) ps
+ where
+  ids = toList $ _pId <$> ps
+  addLogs allLogs p@Plant {..} =
+    FullPlantData p <$> maintenanceStatusesNow maints plantLogs _pDayPlanted
+   where
+    maints = p ^. pMaintenancesList
+    plantLogs =
+      fmap Logs._slLog
+        . M.elems
+        . M.filter ((== _pId) . Logs._slPlantId)
+        $ allLogs
 
 plantTable :: Table StoredPlantF StoredPlantF
 plantTable = table "plant" . pStoredPlant . StoredPlant . pPlant $ Plant

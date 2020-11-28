@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -13,8 +14,10 @@ module Data.Garden.Plant
   , MaintenanceType(..)
   , MaintenanceFreq(..)
   , Maintenances
+  , maintenancesToList
   , Maintenance(..)
   , freqDiffTime
+  , freqDays
   -- *** Status of maintenance.
   -- Data constructors of MaintenanceStatus are not exported, use the Patterns instead.
   , MaintenanceStatus
@@ -47,6 +50,7 @@ module Data.Garden.Plant
   , pMaintenanceTypes
   , pMaintenanceFreqs
   , pMaintenances
+  , pMaintenancesList
   , fpdPlant
   , fpdMStatuses
   -- ** Maintenance
@@ -85,19 +89,16 @@ data MaintenanceFreq = Week | Month | Year
                      deriving (Eq, Show, Enum, Ord, Bounded, Generic, ToJSON, FromJSON)
 
 -- | Reports the frequencies that apply for a given value of elapsed days.
-freqsForDays
-  :: Time.Day -> Time.Day -> M.Map MaintenanceFreq Time.NominalDiffTime
-freqsForDays later earlier
-  | earlier < later = M.fromList $ forFreq Week <> forFreq Month <> forFreq Year
-  | otherwise       = mempty
- where
-  days = Time.diffDays earlier later
-  forFreq f =
-    [ (f, freqDiffTime f * cycles)
-    | days `mod` freqDays f == 0
-    , let cycles = fromIntegral $ days `quot` fd
-          fd     = freqDays f
-    ]
+diffDaysAsStatus
+  :: MaintenanceFreq -> Time.Day -> Time.Day -> Maybe MaintenanceStatus
+diffDaysAsStatus f later earlier
+  | days `div` freqDays f > 0
+  = let cycles = fromIntegral $ days `quot` fd
+        fd     = freqDays f
+    in  Just $ maintenanceStatus f (freqDiffTime f * cycles)
+  | otherwise
+  = Nothing
+  where days = Time.diffDays earlier later
 
 -- | Get the difftime by frequency.
 freqDiffTime :: MaintenanceFreq -> Time.NominalDiffTime
@@ -112,13 +113,9 @@ freqDays = \case
   Month -> 30
   Year  -> 365
 
-deriveOpaleyeEnum ''MaintenanceFreq "maintenance_freq" (Just . identity)
-
 data MaintenanceStatus = UnsafeDueIn MaintenanceFreq Time.NominalDiffTime
                        | UnsafeDueBy MaintenanceFreq (Maybe Time.NominalDiffTime)
                        deriving (Eq, Show, Ord, Generic, ToJSON, FromJSON)
-
-makePrisms ''MaintenanceStatus
 
 {-# COMPLETE DueIn, DueBy #-}
 pattern DueIn :: MaintenanceFreq -> Time.NominalDiffTime -> MaintenanceStatus
@@ -135,6 +132,10 @@ maintenanceStatus
   :: MaintenanceFreq -> Time.NominalDiffTime -> MaintenanceStatus
 maintenanceStatus f t | t < 0     = UnsafeDueIn f t
                       | otherwise = UnsafeDueBy f (Just t)
+
+
+makePrisms ''MaintenanceStatus
+deriveOpaleyeEnum ''MaintenanceFreq "maintenance_freq" (Just . identity)
 
 newtype PlantId' id = PlantId { _unPlantId :: id }
                  deriving ( Eq, Show, ToJSON
@@ -170,6 +171,17 @@ pMaintenances = lens from' to'
         fs' = snd <$> ms
     in  p & pMaintenanceTypes .~ ms' & pMaintenanceFreqs .~ fs'
 
+pMaintenancesList :: Lens' Plant [Maintenance]
+pMaintenancesList = lens from' to'
+ where
+  from' Plant {..} =
+    uncurry Maintenance <$> zip _pMaintenanceTypes _pMaintenanceFreqs
+  to' p ms =
+    let ms' = _mType <$> ms
+        fs' = _mFreq <$> ms
+    in  p & pMaintenanceTypes .~ ms' & pMaintenanceFreqs .~ fs'
+
+
 type Plant
   = Plant'
       PlantId
@@ -188,6 +200,10 @@ data Maintenance = Maintenance
 
 type Maintenances = M.Map MaintenanceType MaintenanceFreq
 
+-- | Get maintenances as a list.
+maintenancesToList :: Maintenances -> [Maintenance]
+maintenancesToList = fmap (uncurry Maintenance) . M.toList
+
 makeLenses ''Maintenance
 
 -- | Log of the maintenance performed on the plant.
@@ -195,7 +211,7 @@ data MaintenanceLog' maint performedDate = MaintenanceLog
   { _mlMaintenance   :: maint
   , _mlTimePerformed :: performedDate
   }
-  deriving (Eq, Show, Generic, ToJSON, FromJSON)
+  deriving (Eq, Show, Generic, Ord, ToJSON, FromJSON)
 
 type MaintenanceLog = MaintenanceLog' MaintenanceType Time.UTCTime
 
@@ -240,23 +256,24 @@ maintenanceStatuses
   -> Time.UTCTime -- ^ The time at which to determine due maintenances.
   -> MaintenanceStatuses -- ^ Map containing all maintenance types and the difference of time since the last time they were performed.
 maintenanceStatuses maints (latestMaintenances -> latest) dayPlanted atTime@Time.UTCTime { utctDay = atDay }
-  = let logBased         = foldl' determineStatus mempty maints
-        datePlantedBased = undefined
+  = let logBased = foldl' determineStatus mempty maints
     in  datePlantedBased <> logBased
  where
   determineStatus statuses Maintenance {..} = case M.lookup _mType latest of
-    -- never performed. 
-    Nothing -> addToStats $ DueBy _mFreq Nothing
+    -- never performed: we rely on datePlantedBased then. 
+    Nothing -> statuses
     Just lastPerformed ->
       let timeSincePerformed = Time.diffUTCTime atTime lastPerformed
       in  addToStats $ maintenanceStatus
             _mFreq
             (freqDiffTime _mFreq - timeSincePerformed)
     where addToStats v = M.insert _mType v statuses
-  reqFreqsForDays  = freqsForDays atDay dayPlanted
-  daysSincePlanted = Time.diffDays dayPlanted atDay
-  reqMaintsForDays =
-    [ (_mType, undefined) | Maintenance {..} <- maints, undefined ] -- _mFreq `elem` reqFreqsForDays
+  datePlantedBased =
+    M.fromList
+      . catMaybes
+      $ [ (_mType, ) <$> diffDaysAsStatus _mFreq dayPlanted atDay
+        | Maintenance {..} <- maints
+        ]
 
 -- | Get the maintenance statuses at the current time.
 -- See `maintenanceStatuses`

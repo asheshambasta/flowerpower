@@ -24,6 +24,8 @@ import "dbstorage-polysemy" Database.Storage
 
 import           Servant.API
 import           Servant.Server
+
+import           Backend.Garden.Plant.Logs
 import           Backend.Garden.Plant
 import           Backend.Garden.Plant.Types     ( PlantStorageErr(..) )
 
@@ -34,28 +36,36 @@ import "wai-cors" Network.Wai.Middleware.Cors
 
 plantApiServerT
   :: forall r
-   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
+   . Members
+       '[ID , Error KnownError , Transaction , Reader Logger , Embed IO]
+       r
   => ServerT PlantApi (Sem r)
 plantApiServerT =
   searchByName :<|> addPlant :<|> updatePlant :<|> (addLogs :<|> deletePlant)
 
 updatePlant
   :: forall r
-   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
+   . Members
+       '[ID , Error KnownError , Transaction , Reader Logger , Embed IO]
+       r
   => Plant
   -> Sem r FullPlantData
 updatePlant = dbUpdate . UpdatePlant >=> getPlant . headMay
 
 addPlant
   :: forall r
-   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
+   . Members
+       '[ID , Error KnownError , Transaction , Reader Logger , Embed IO]
+       r
   => Plant
   -> Sem r FullPlantData
 addPlant = dbUpdate . AddPlant >=> getPlant . headMay
 
 getPlant
   :: forall r
-   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
+   . Members
+       '[ID , Error KnownError , Transaction , Reader Logger , Embed IO]
+       r
   => Maybe PlantId
   -> Sem r FullPlantData
 getPlant mid =
@@ -67,11 +77,11 @@ getPlant mid =
     >>= maybe (notFound mid) pure
  where
   notFound =
-    throwKnownError . StorageError . mappend "Unable to get plant:" . show
+    throwKnownError . StorageError . mappend "Unable to get plant: " . show
 
 searchByName
   :: forall r
-   . Members '[Error KnownError , Transaction , Reader Logger] r
+   . Members '[Error KnownError , Transaction , Reader Logger , Embed IO] r
   => Maybe Text
   -> Sem r [FullPlantData]
 searchByName = \case
@@ -85,11 +95,15 @@ searchByName = \case
 
 addLogs
   :: forall r
-   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
+   . Members
+       '[ID , Error KnownError , Transaction , Reader Logger , Embed IO]
+       r
   => Maybe PlantId
   -> [MaintenanceLog]
   -> Sem r FullPlantData
-addLogs = undefined
+addLogs mId ls = case mId of
+  Just id -> dbUpdate (AddLogs id ls) >>= getPlant . headMay . fmap _slPlantId
+  Nothing -> throwKnownError . StorageError $ "No ID in request!"
 
 deletePlant
   :: forall r
@@ -101,7 +115,9 @@ deletePlant mid = maybe noId (dbUpdate . DeletePlant) mid $> NoContent
 
 plantApiServer
   :: forall r
-   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
+   . Members
+       '[ID , Error KnownError , Transaction , Reader Logger , Embed IO]
+       r
   => (forall r' a . (r' ~ r) => Sem r a -> Handler a)
   -> Server PlantApi
 plantApiServer natTrans =
@@ -109,7 +125,9 @@ plantApiServer natTrans =
 
 plantApiApplication
   :: forall r
-   . Members '[ID , Error KnownError , Transaction , Reader Logger] r
+   . Members
+       '[ID , Error KnownError , Transaction , Reader Logger , Embed IO]
+       r
   => (forall r' a . (r' ~ r) => Sem r a -> Handler a)
   -> Application
 plantApiApplication natTrans =

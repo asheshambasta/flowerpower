@@ -1,0 +1,4 @@
+Add the maintenance log table.
+
+-- Editing: fht-backend/db/migrations/1606558487.logstable/upgrade.txt
+-- Leave as is for not creating the file
