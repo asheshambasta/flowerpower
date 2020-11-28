@@ -5,6 +5,7 @@ module Main
 where
 
 
+import           Control.Lens
 import qualified Control.Monad.Log             as MLog
 import "prelude-polysemy" Prelude.Polysemy.ID
 import "prelude-polysemy" Prelude.Control.Error ( logErrors
@@ -41,7 +42,8 @@ parseConf = A.info
 
 plantServer :: Runtime -> IO ExitCode
 plantServer rt =
-  let app = PlantApi.plantApiApplication (sem2Handler rt)
+  let app = PlantApi.plantApiApplication (rt ^. rConf . cCorsAllowedOrigins)
+                                         (sem2Handler rt)
   in  try (Warp.runSettings Warp.defaultSettings app) >>= \case
         Left err ->
           putStrLn (show @SomeException @Text err) $> ExitFailure (-1)

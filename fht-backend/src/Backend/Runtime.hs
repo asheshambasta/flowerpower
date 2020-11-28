@@ -1,6 +1,7 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Backend.Runtime
   ( module DB
   , module L
@@ -8,22 +9,39 @@ module Backend.Runtime
   , Runtime(..)
   , RuntimeError(..)
   , confP
+  -- * Lenses
+  , cDBConf
+  , cLogLevel
+  , cApplicationName
+  , cSnowflakeNode
+  , cCorsAllowedOrigins
+  , rDBRuntime
+  , rLogger
+  , rConf
+  , rIDGen
   -- * Generating runtimes. 
   , conf2Runtime
   )
 where
 
+import "wai-cors" Network.Wai.Middleware.Cors   ( Origin )
+
+import           Control.Lens
 import           Control.Monad.Log             as ML
+
 import "prelude-polysemy" Prelude.Polysemy.ID
 import "prelude-polysemy" Prelude.Control.Log  as L
+
 import "dbstorage-polysemy" Database.Runtime   as DB
+
 import qualified Options.Applicative           as A
 
 data Conf = Conf
-  { _cDBConf          :: DB.DBConf
-  , _cLogLevel        :: ML.Level
-  , _cApplicationName :: Text
-  , _cSnowflakeNode   :: Integer
+  { _cDBConf             :: DB.DBConf
+  , _cLogLevel           :: ML.Level
+  , _cApplicationName    :: Text
+  , _cSnowflakeNode      :: Integer
+  , _cCorsAllowedOrigins :: [Origin]
   }
 
 -- | The runtime is nothing but a product of materialised values useful for running the application.
@@ -34,12 +52,16 @@ data Runtime = Runtime
   , _rIDGen     :: IDGen
   }
 
+makeLenses ''Runtime
+makeLenses ''Conf
+
 confP :: A.Parser Conf
 confP = do
-  _cDBConf          <- DB.dbConfP
-  _cLogLevel        <- parseLogLevel
-  _cApplicationName <- parseAppName
-  _cSnowflakeNode   <- parseSnowflakeNode
+  _cDBConf             <- DB.dbConfP
+  _cLogLevel           <- parseLogLevel
+  _cApplicationName    <- parseAppName
+  _cSnowflakeNode      <- parseSnowflakeNode
+  _cCorsAllowedOrigins <- parseAllowedOrigins
   pure Conf { .. }
  where
   parseAppName = A.strOption
@@ -64,6 +86,10 @@ confP = do
     <> A.help "Snowflake node for generating ids"
     <> A.value 0
     <> A.showDefault
+    )
+  parseAllowedOrigins = A.many $ A.strOption
+    (A.long "cors-allowed-origin" <> A.short 'C' <> A.help
+      "Allowed CORS origins"
     )
 
 conf2Runtime :: Conf -> IO (Either RuntimeError Runtime)

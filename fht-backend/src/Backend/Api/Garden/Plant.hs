@@ -25,6 +25,7 @@ import "dbstorage-polysemy" Database.Storage
 import           Servant.API
 import           Servant.Server
 
+import           Backend.Runtime                ( Runtime(..) )
 import           Backend.Garden.Plant.Logs
 import           Backend.Garden.Plant
 import           Backend.Garden.Plant.Types     ( PlantStorageErr(..) )
@@ -128,15 +129,16 @@ plantApiApplication
    . Members
        '[ID , Error KnownError , Transaction , Reader Logger , Embed IO]
        r
-  => (forall r' a . (r' ~ r) => Sem r a -> Handler a)
+  => [Origin]
+  -> (forall r' a . (r' ~ r) => Sem r a -> Handler a)
   -> Application
-plantApiApplication natTrans =
+plantApiApplication origins natTrans =
   serve (Proxy @PlantApi) (plantApiServer natTrans)
     -- & addHeaders [("access-control-allow-origin", "*")]
     & cors (const . Just $ corsPolicy)
  where
   corsPolicy = simpleCorsResourcePolicy
-    { corsOrigins        = Just (["http://localhost:3003"], True)
+    { corsOrigins        = Just (origins, True)
     , corsMethods        = ["GET", "PUT", "POST", "DELETE", "OPTIONS"]
     , corsRequestHeaders = [ hAuthorization
                            , hContentType
