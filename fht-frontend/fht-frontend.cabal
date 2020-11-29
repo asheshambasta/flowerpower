@@ -21,7 +21,7 @@ executable fht-frontend
     -- network-uri is a depedency for bulma. HeadSettings uses types from it.
     -- https://hackage.haskell.org/package/bulmex-4.0.0/docs/Reflex-Bulmex-Html.html#t:HeadSettings
     -- , network-uri
-    , text
+    , text 
     , protolude 
     , containers
     , lens
@@ -64,11 +64,12 @@ executable fht-frontend
 
   ghc-options:        -Wall -Wno-unused-do-bind
 
-  if impl(ghcjs -any)
-    ghc-options: -dedupe
-    cpp-options: -DGHCJS_BROWSER
+  -- if impl(ghcjs -any)
+  --   ghc-options: -dedupe
+  --   cpp-options: -DGHCJS_BROWSER
 
   default-language:   Haskell2010
 
   if os(osx)
     ghc-options: -dynamic
+

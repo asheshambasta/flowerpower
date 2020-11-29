@@ -18,6 +18,8 @@ executable fht-backend
     , aeson
     , lens
     , data-default-class
+    -- System.FilePath 
+    , filepath
     -- dependencies from within the project.
     , fht-data 
     , fht-api
@@ -28,6 +30,7 @@ executable fht-backend
     , http-types
     , warp
     , wai
+    , wai-app-static
     , wai-extra
     , wai-cors
 
@@ -59,6 +62,7 @@ executable fht-backend
 
     Backend.Runtime
     -- API modules
+    Backend.Api
     Backend.Api.Garden.Plant
 
   default-extensions:

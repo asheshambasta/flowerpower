@@ -16,8 +16,6 @@ module Frontend.Nav
 where
 
 import qualified Data.Text                     as T
-import qualified Data.Text.Internal.Search     as T
-import qualified Data.Map                      as M
 import           Data.Garden.Plant
 import           Control.Monad.Fix              ( MonadFix )
 import           Lib.Reflex.Clicks              ( clickEvent )
@@ -140,7 +138,7 @@ dNavFilterPlants dNav = dNav <&> \case
     \FullPlantData { _fpdMStatuses = statuses } -> containsDues statuses
   Search (clean -> needle) | not (T.null needle) -> \fpd ->
     let haystack = fpd ^. fpdPlant . pName . to clean
-        ixs      = T.indices needle haystack
+        ixs      = T.breakOnAll needle haystack
     in  not . null $ ixs
   _ -> const True
   where clean = T.toLower . T.strip

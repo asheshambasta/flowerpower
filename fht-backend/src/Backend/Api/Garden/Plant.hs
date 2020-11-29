@@ -6,8 +6,6 @@
 module Backend.Api.Garden.Plant
   ( module Api.Garden.Plant
   , plantApiServerT
-  , plantApiServer
-  , plantApiApplication
   )
 where
 
@@ -34,15 +32,6 @@ import "fht-data" Data.Garden.Plant
 import "fht-api" Api.Garden.Plant
 
 import "wai-cors" Network.Wai.Middleware.Cors
-
-plantApiServerT
-  :: forall r
-   . Members
-       '[ID , Error KnownError , Transaction , Reader Logger , Embed IO]
-       r
-  => ServerT PlantApi (Sem r)
-plantApiServerT =
-  searchByName :<|> addPlant :<|> updatePlant :<|> (addLogs :<|> deletePlant)
 
 updatePlant
   :: forall r
@@ -114,36 +103,12 @@ deletePlant
 deletePlant mid = maybe noId (dbUpdate . DeletePlant) mid $> NoContent
   where noId = throwKnownError NoIdSupplied
 
-plantApiServer
+plantApiServerT
   :: forall r
    . Members
        '[ID , Error KnownError , Transaction , Reader Logger , Embed IO]
        r
-  => (forall r' a . (r' ~ r) => Sem r a -> Handler a)
-  -> Server PlantApi
-plantApiServer natTrans =
-  hoistServer (Proxy @PlantApi) natTrans (plantApiServerT @r)
+  => ServerT PlantApi (Sem r)
+plantApiServerT =
+  searchByName :<|> addPlant :<|> updatePlant :<|> (addLogs :<|> deletePlant)
 
-plantApiApplication
-  :: forall r
-   . Members
-       '[ID , Error KnownError , Transaction , Reader Logger , Embed IO]
-       r
-  => [Origin]
-  -> (forall r' a . (r' ~ r) => Sem r a -> Handler a)
-  -> Application
-plantApiApplication origins natTrans =
-  serve (Proxy @PlantApi) (plantApiServer natTrans)
-    -- & addHeaders [("access-control-allow-origin", "*")]
-    & cors (const . Just $ corsPolicy)
- where
-  corsPolicy = simpleCorsResourcePolicy
-    { corsOrigins        = Just (origins, True)
-    , corsMethods        = ["GET", "PUT", "POST", "DELETE", "OPTIONS"]
-    , corsRequestHeaders = [ hAuthorization
-                           , hContentType
-                           , hContentEncoding
-                           , hContentLength
-                           ]
-    , corsExposedHeaders = Just [hServer]
-    }

@@ -7,10 +7,6 @@ where
 
 import "servant" Servant.API
 import qualified "fht-api" Api.Garden.Plant    as Api
-import qualified Data.Map                      as M
-import           Frontend.Shared.Widgets.Bulma  ( sectionContainer
-                                                , tileSection
-                                                )
 import           Frontend.Garden.Plant
 import           Control.Monad.Fix              ( MonadFix )
 import qualified Frontend.Nav                  as Nav
@@ -30,9 +26,7 @@ main = mainWidgetWithBulma $ do
     let eAddPlantNav = RD.ffilter (== Nav.AddNew) eNav $> ()
         eNav         = RD.updated dNav
 
-    ePlantAdded <- addPlantModal (RD.traceEvent "eAddPlantNav" eAddPlantNav)
-                                 RD.never
-                                 addPlant
+    ePlantAdded   <- addPlantModal eAddPlantNav RD.never addPlant
     ePlantEdited  <- addPlantModal (eEdit $> ()) (Just <$> eEdit) editPlant
     ePlantDeleted <- deletePlant dDelete (eDelete $> ())
     eLogsAdded    <- addLogs dAddLogsId dAddLogsLogs (eAddLogs $> ())
@@ -49,12 +43,11 @@ main = mainWidgetWithBulma $ do
     dPlants            <- getPlants dNav eRefreshPlants
     ePlantSelectResult <- dispPlants Nothing (Nav.dNavFilterPlants dNav) dPlants
 
-    let eSelected = preview _SelectPlant <$> ePlantSelectResult
-        eDelete   = RD.fmapMaybe (preview _DeletePlant) ePlantSelectResult
+    let eDelete  = RD.fmapMaybe (preview _DeletePlant) ePlantSelectResult
         -- the edited plant event can contain a `Maybe Plant`; however, the event to open the edit modal
         -- must've definitely been triggered with a plant in edit mode.
-        eEdit     = RD.fmapMaybe (preview _EditPlant) ePlantSelectResult
-        eAddLogs  = RD.fmapMaybe (preview _AddLogsNow) ePlantSelectResult
+        eEdit    = RD.fmapMaybe (preview _EditPlant) ePlantSelectResult
+        eAddLogs = RD.fmapMaybe (preview _AddLogsNow) ePlantSelectResult
 
     dAddLogsId   <- RD.holdDyn Api.QNone (Api.QParamSome . fst <$> eAddLogs)
     dAddLogsLogs <- RD.holdDyn (Left "No logs to add")
@@ -85,7 +78,7 @@ deletePlant :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.DeletePlant t m
 
 (listPlants :<|> addPlant :<|> editPlant :<|> (addLogs :<|> deletePlant)) =
   Api.plantApiClient baseUrl
-  where baseUrl = RD.constDyn $ Api.BaseFullUrl Api.Http "localhost" 3000 ""
+  where baseUrl = RD.constDyn $ Api.BasePath "" -- Api.BaseFullUrl Api.Http "localhost" 3000 ""
 
 navBar
   :: (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)

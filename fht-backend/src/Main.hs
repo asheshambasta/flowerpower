@@ -19,7 +19,7 @@ import "dbstorage-polysemy" Polysemy.Database
                                          hiding ( Runtime )
 
 import           Network.Wai.Handler.Warp      as Warp
-import qualified Backend.Api.Garden.Plant      as PlantApi
+import           Backend.Api                    ( fhtBackendApiApplication )
 import qualified Options.Applicative           as A
 import           Backend.Runtime
 
@@ -42,8 +42,9 @@ parseConf = A.info
 
 plantServer :: Runtime -> IO ExitCode
 plantServer rt =
-  let app = PlantApi.plantApiApplication (rt ^. rConf . cCorsAllowedOrigins)
-                                         (sem2Handler rt)
+  let app = fhtBackendApiApplication (rt ^. rConf . cStaticFilesDir)
+                                     (rt ^. rConf . cCorsAllowedOrigins)
+                                     (sem2Handler rt)
   in  try (Warp.runSettings Warp.defaultSettings app) >>= \case
         Left err ->
           putStrLn (show @SomeException @Text err) $> ExitFailure (-1)

@@ -64,8 +64,7 @@ plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) =
         -- and we want to display the modal if the user has double clicked.
         eShowModal = ffilter (== SingleClick) eClickType $> ()
     eModalResult <- fst <$> modalClose eShowModal (maintenanceModal dSelected)
-    pure $ traceEvent "PlantSelectResult" $ leftmost
-      [SelectPlant <$> eSelected, eModalResult]
+    pure $ leftmost [SelectPlant <$> eSelected, eModalResult]
  where
   plantTile =
     elClass' "div" "tile is-parent"
@@ -93,40 +92,37 @@ addPlantModal
   -> Event t (Maybe Plant)
   -> (Dynamic t (Either Text Plant) -> Event t () -> m (Event t a))
   -> m (Event t a)
-addPlantModal eModal (traceEvent "eSelected" -> eSelected) callback =
+addPlantModal eModal eSelected callback =
   fmap fst . modalClose eModal . box $ do
 
-    rec dName        <- nameInput eSaveClicked
-        dDesc        <- descInput eSaveClicked
-        dImage       <- imageInput eSaveClicked
-        dTimePlanted <- timePlantedInput eSaveClicked
-        dPlantId     <- holdDyn Nothing (fmap _pId <$> eSelected)
-        dMaints      <-
-          maintButtons
-          $   traceEvent "pMaintenances"
-          $   maybe mempty (view pMaintenances)
-          <$> eSelected
+    rec
+      dName        <- nameInput eSaveClicked
+      dDesc        <- descInput eSaveClicked
+      dImage       <- imageInput eSaveClicked
+      dTimePlanted <- timePlantedInput eSaveClicked
+      dPlantId     <- holdDyn Nothing (fmap _pId <$> eSelected)
+      dMaints <- maintButtons $ maybe mempty (view pMaintenances) <$> eSelected
 
-        let dEitherPlant = do
-              eName       <- dName
-              plantId     <- dPlantId
-              _pDesc      <- dDesc
-              _pImage     <- dImage
-              maints      <- M.toList <$> dMaints
-              eDayPlanted <- dTimePlanted
-              pure
-                $   Plant (fromMaybe 0 plantId)
-                <$> eName
-                <*> pure _pDesc
-                <*> pure _pImage
-                <*> eDayPlanted
-                <*> pure (fst <$> maints)
-                <*> pure (snd <$> maints)
+      let dEitherPlant = do
+            eName       <- dName
+            plantId     <- dPlantId
+            _pDesc      <- dDesc
+            _pImage     <- dImage
+            maints      <- M.toList <$> dMaints
+            eDayPlanted <- dTimePlanted
+            pure
+              $   Plant (fromMaybe 0 plantId)
+              <$> eName
+              <*> pure _pDesc
+              <*> pure _pImage
+              <*> eDayPlanted
+              <*> pure (fst <$> maints)
+              <*> pure (snd <$> maints)
 
-        eSaveClicked <- mkButtonDynClassToggle (isRight <$> dEitherPlant)
-                                               "button is-primary"
-                                               "button is-disabled"
-                                               (dynText "Save")
+      eSaveClicked <- mkButtonDynClassToggle (isRight <$> dEitherPlant)
+                                             "button is-primary"
+                                             "button is-disabled"
+                                             (dynText "Save")
 
     eSaved <- callback dEitherPlant eSaveClicked
 
@@ -163,13 +159,12 @@ maintButtons
    . (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m)
   => Event t Maintenances
   -> m (Dynamic t Maintenances)
-maintButtons (traceEvent "eInitialMaints" -> eInitialMaints) =
-  Tags.divClass "buttons" $ do
-    rec dMaints     <- foldDyn (M.alter rotate') initMaints eMaintType
-        eMaintType  <- mapM (mkButton' dMaints) allMTypes <&> leftmost
-        bInitMaints <- hold mempty eInitialMaints
-        initMaints  <- sample bInitMaints
-    pure dMaints
+maintButtons eInitialMaints = Tags.divClass "buttons" $ do
+  rec dMaints     <- foldDyn (M.alter rotate') initMaints eMaintType
+      eMaintType  <- mapM (mkButton' dMaints) allMTypes <&> leftmost
+      bInitMaints <- hold mempty eInitialMaints
+      initMaints  <- sample bInitMaints
+  pure dMaints
  where
   mkButton' dMaints mt =
     let dFreqMaybe  = M.lookup mt <$> dMaints

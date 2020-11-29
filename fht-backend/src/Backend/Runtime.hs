@@ -8,6 +8,7 @@ module Backend.Runtime
   , Conf(..)
   , Runtime(..)
   , RuntimeError(..)
+  , StaticFilesDir(..)
   , confP
   -- * Lenses
   , cDBConf
@@ -15,6 +16,7 @@ module Backend.Runtime
   , cApplicationName
   , cSnowflakeNode
   , cCorsAllowedOrigins
+  , cStaticFilesDir
   , rDBRuntime
   , rLogger
   , rConf
@@ -24,6 +26,7 @@ module Backend.Runtime
   )
 where
 
+import "filepath" System.FilePath               ( addTrailingPathSeparator )
 import "wai-cors" Network.Wai.Middleware.Cors   ( Origin )
 
 import           Control.Lens
@@ -36,12 +39,15 @@ import "dbstorage-polysemy" Database.Runtime   as DB
 
 import qualified Options.Applicative           as A
 
+newtype StaticFilesDir = StaticFilesDir FilePath deriving (Eq, Show) via FilePath
+
 data Conf = Conf
   { _cDBConf             :: DB.DBConf
   , _cLogLevel           :: ML.Level
   , _cApplicationName    :: Text
   , _cSnowflakeNode      :: Integer
   , _cCorsAllowedOrigins :: [Origin]
+  , _cStaticFilesDir     :: StaticFilesDir
   }
 
 -- | The runtime is nothing but a product of materialised values useful for running the application.
@@ -62,6 +68,7 @@ confP = do
   _cApplicationName    <- parseAppName
   _cSnowflakeNode      <- parseSnowflakeNode
   _cCorsAllowedOrigins <- parseAllowedOrigins
+  _cStaticFilesDir     <- parseStaticFilesDir
   pure Conf { .. }
  where
   parseAppName = A.strOption
@@ -91,6 +98,13 @@ confP = do
     (A.long "cors-allowed-origin" <> A.short 'C' <> A.help
       "Allowed CORS origins"
     )
+  parseStaticFilesDir =
+    StaticFilesDir . addTrailingPathSeparator <$> A.strOption
+      (  A.long "static-files-dir"
+      <> A.help "Directory to serve static files from."
+      <> A.showDefault
+      <> A.value "/var/www"
+      )
 
 conf2Runtime :: Conf -> IO (Either RuntimeError Runtime)
 conf2Runtime _rConf@Conf {..} = do

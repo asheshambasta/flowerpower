@@ -43,9 +43,10 @@ library
 
   ghc-options:        -Wall -threaded -Wno-unused-do-bind
 
-  if impl(ghcjs -any)
-    ghc-options: -dedupe
-    cpp-options: -DGHCJS_BROWSER
+  -- FIXME: causes haddock to fail.
+  -- if impl(ghcjs -any)
+  --   ghc-options: -dedupe
+  --   cpp-options: -DGHCJS_BROWSER
 
   default-language:   Haskell2010
 
