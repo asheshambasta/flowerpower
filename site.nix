@@ -1,7 +1,7 @@
 { system ? builtins.currentSystem
 }:
 let 
-  name = "flowerpower";
+  name = "fht-data";
   sources = import ./nix/sources.nix;
   rp = import sources.reflex-platform { 
     inherit system;

@@ -1,10 +1,13 @@
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TupleSections    #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE NamedFieldPuns   #-}
+{-# LANGUAGE PatternSynonyms  #-}
+{-# LANGUAGE TemplateHaskell  #-}
+{-# LANGUAGE DeriveAnyClass   #-}
+{-|
+Module: Data.Garden.Plant
+Description: The core types 
+-}
 module Data.Garden.Plant
   ( Plant'(..)
   , Plant
@@ -63,9 +66,6 @@ module Data.Garden.Plant
   , mlMaintenance
   , mlTimePerformed
   -- * DB
-  -- ** Enums
-  , PGMaintenanceType
-  , PGMaintenanceFreq
   -- ** Profunctor
   , pPlantId
   , pPlant
@@ -73,7 +73,6 @@ module Data.Garden.Plant
   )
 where
 
-import           Composite.Opaleye.TH           ( deriveOpaleyeEnum )
 import           Data.Profunctor.Product.TH     ( makeAdaptorAndInstance' )
 import           Web.HttpApiData                ( ToHttpApiData
                                                 , FromHttpApiData
@@ -86,7 +85,6 @@ import qualified Data.Time                     as Time
 data MaintenanceType = Pruning | Fertilizing | Repotting
                  deriving (Eq, Show, Enum, Ord, Bounded, Generic, ToJSON, ToJSONKey, FromJSON, FromJSONKey)
 
-deriveOpaleyeEnum ''MaintenanceType "maintenance_type" (Just . identity)
 
 data MaintenanceFreq = Week | Month | Year
                      deriving (Eq, Show, Enum, Ord, Bounded, Generic, ToJSON, FromJSON)
@@ -137,7 +135,6 @@ maintenanceStatus f t
   where freqTime = freqDiffTime f
 
 makePrisms ''MaintenanceStatus
-deriveOpaleyeEnum ''MaintenanceFreq "maintenance_freq" (Just . identity)
 
 newtype PlantId' id = PlantId { _unPlantId :: id }
                  deriving ( Eq, Show, ToJSON

@@ -28,7 +28,7 @@ common common-default-extensions
     LambdaCase
     
 common common-ghc-options 
-  ghc-options:        -Wall -threaded -Wno-unused-do-bind
+  ghc-options:        -Wall -Wno-unused-do-bind
 
   if impl(ghcjs -any)
     ghc-options: -dedupe
@@ -41,9 +41,8 @@ common common-ghc-options
     
 common common-build-depends
   build-depends:
-      base-noprelude
+      base
     , text
-    , prelude-polysemy
     , containers
     , lens
     , data-default-class
@@ -51,12 +50,13 @@ common common-build-depends
     , time
     , http-api-data
     , http-types
-    , monad-log
-    , polysemy
-    
+    , protolude
+
     -- DB Support
     , product-profunctors
-    , composite-opaleye
+    
+  mixins: base hiding (Prelude)
+        , protolude (Protolude as Prelude)
     
 ------------------
 -- Core library --

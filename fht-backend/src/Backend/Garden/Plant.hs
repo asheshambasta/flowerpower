@@ -18,6 +18,9 @@ module Backend.Garden.Plant
   )
 where
 
+import           Backend.Garden.Plant.Orphans   ( PGMaintenanceType
+                                                , PGMaintenanceFreq
+                                                )
 import qualified Data.Map                      as M
 import           Backend.Garden.Plant.Types     ( PlantIdF )
 import qualified Backend.Garden.Plant.Logs     as Logs
