@@ -13,15 +13,14 @@ import qualified Test.QuickCheck.Monadic       as QC
 
 spec :: Spec
 spec =
-  describe "Data.Garden.Plant"
-    . sequence_
-    $ [maintenanceStatus, maintenanceDues]
+  describe "Data.Garden.Plant" . sequence_ $ [-- maintenanceStatus, 
+                                              maintenanceDues]
 
-maintenanceStatus =
-  describe "MaintenanceStatus"
-    $ it "Must report the right status depending on the time differences."
-    . QC.property
-    $ checkTimes
+-- maintenanceStatus =
+--   describe "MaintenanceStatus"
+--     $ it "Must report the right status depending on the time differences."
+--     . QC.property
+--     $ checkTimes
 
 checkTimes :: QC.Property
 checkTimes = QC.monadicIO $ do

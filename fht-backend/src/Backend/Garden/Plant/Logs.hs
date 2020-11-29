@@ -22,6 +22,7 @@ import           Backend.Garden.Plant.Types     ( PlantIdF
 import           Polysemy.Error                as E
 import "prelude-polysemy" Prelude.Control.Error
                                                as Err
+import           Backend.Garden.Plant.Orphans   ( PGMaintenanceType )
 import           Prelude                 hiding ( to )
 import           Data.Profunctor.Product.TH     ( makeAdaptorAndInstance' )
 import           Opaleye
