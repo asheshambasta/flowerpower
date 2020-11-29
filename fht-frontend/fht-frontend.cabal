@@ -62,7 +62,7 @@ executable fht-frontend
     ViewPatterns
     StrictData
 
-  ghc-options:        -Wall -threaded -Wno-unused-do-bind
+  ghc-options:        -Wall -Wno-unused-do-bind
 
   if impl(ghcjs -any)
     ghc-options: -dedupe

@@ -14,7 +14,7 @@ in rp.project ({ pkgs, ... }: {
 
   # uses jsaddle-warp to fire up a warp server instead of webgtk.
   useWarp = true;
-  withHoogle = false;
+  withHoogle = true;
 
   packages = {
     fht-frontend = ./fht-frontend;
