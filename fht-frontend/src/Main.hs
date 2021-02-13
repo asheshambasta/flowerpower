@@ -21,7 +21,7 @@ import           Protolude
 main :: IO ()
 main = mainWidgetWithBulma $ do
   rec
-    dNav <- navBar (length <$> dPlants)
+    dNav <- navBar $ length <$> dPlants
 
     let eAddPlantNav = RD.ffilter (== Nav.AddNew) eNav $> ()
         eNav         = RD.updated dNav
@@ -78,7 +78,8 @@ deletePlant :: (RD.MonadWidget t m, RD.MonadHold t m) => Api.DeletePlant t m
 
 (listPlants :<|> addPlant :<|> editPlant :<|> (addLogs :<|> deletePlant)) =
   Api.plantApiClient baseUrl
-  where baseUrl = RD.constDyn $ Api.BasePath "" -- Api.BaseFullUrl Api.Http "localhost" 3000 ""
+  where baseUrl = RD.constDyn $ Api.BasePath ""
+                  -- Api.BaseFullUrl Api.Http "localhost" 3000 ""
 
 navBar
   :: (RD.DomBuilder t m, RD.PostBuild t m, RD.MonadHold t m, MonadFix m)

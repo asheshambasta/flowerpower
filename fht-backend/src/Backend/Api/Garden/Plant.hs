@@ -23,15 +23,12 @@ import "dbstorage-polysemy" Database.Storage
 import           Servant.API
 import           Servant.Server
 
-import           Backend.Runtime                ( Runtime(..) )
 import           Backend.Garden.Plant.Logs
 import           Backend.Garden.Plant
 import           Backend.Garden.Plant.Types     ( PlantStorageErr(..) )
 
 import "fht-data" Data.Garden.Plant
 import "fht-api" Api.Garden.Plant
-
-import "wai-cors" Network.Wai.Middleware.Cors
 
 updatePlant
   :: forall r
@@ -80,8 +77,10 @@ searchByName = \case
     | T.null name -> getAll
     | otherwise   -> dbSelect (SearchByName name) >>= populate
  where
-  populate = populatePlantData . fmap _unStoredPlant . M.elems
-  getAll   = dbSelect GetAllPlants >>= populate
+  populate =
+    -- sort plants; this may be bad user experience.
+    fmap (sortOn Down) . populatePlantData . fmap _unStoredPlant . M.elems
+  getAll = dbSelect GetAllPlants >>= populate
 
 addLogs
   :: forall r

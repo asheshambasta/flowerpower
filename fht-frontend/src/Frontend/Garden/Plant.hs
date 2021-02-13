@@ -68,6 +68,7 @@ plantCard dSelected fpd@(FullPlantData plant@Plant {..} statuses) =
  where
   plantTile =
     elClass' "div" "tile is-parent"
+      . Tags.divClass "box"
       . elDynAttr "article" prodAttrs -- "tile is-child notification is-info"
       $ do
           duesIndicator containsDues'
@@ -202,13 +203,16 @@ dispPlants
   -> Dynamic t [FullPlantData] -- ^ Current list of plants 
   -> m (Event t PlantSelectResult) -- ^ Event with the selected plant.
 dispPlants mInitSelected dFilter dAllPlants =
-  Tags.divClass "columns is-mobile is-multiline is-vcentered" $ do
-    rec
-      dSelectedPlant <- holdDyn mInitSelected (preview _SelectPlant <$> ePlant)
-      ePlants        <- fmap leftmost
-        <$> dyn (dePlants' dSelectedPlant dFilter dAllPlants)
-      ePlant <- switchHold never ePlants
-    pure ePlant
+  Bw.mkSection
+    . Tags.divClass "columns is-mobile is-multiline is-vcentered"
+    $ do
+        rec
+          dSelectedPlant <- holdDyn mInitSelected
+                                    (preview _SelectPlant <$> ePlant)
+          ePlants <- fmap leftmost
+            <$> dyn (dePlants' dSelectedPlant dFilter dAllPlants)
+          ePlant <- switchHold never ePlants
+        pure ePlant
 
 dePlants'
   :: forall t m
