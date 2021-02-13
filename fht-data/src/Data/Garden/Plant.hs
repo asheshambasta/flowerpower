@@ -70,17 +70,16 @@ module Data.Garden.Plant
   , pPlantId
   , pPlant
   , pMaintenanceLog
-  )
-where
+  ) where
 
-import           Data.Profunctor.Product.TH     ( makeAdaptorAndInstance' )
-import           Web.HttpApiData                ( ToHttpApiData
-                                                , FromHttpApiData
-                                                )
 import           Control.Lens
-import qualified Data.Map                      as M
 import           Data.Aeson
+import qualified Data.Map                      as M
+import           Data.Profunctor.Product.TH     ( makeAdaptorAndInstance' )
 import qualified Data.Time                     as Time
+import           Web.HttpApiData                ( FromHttpApiData
+                                                , ToHttpApiData
+                                                )
 
 data MaintenanceType = Pruning | Fertilizing | Repotting
                  deriving (Eq, Show, Enum, Ord, Bounded, Generic, ToJSON, ToJSONKey, FromJSON, FromJSONKey)
@@ -129,8 +128,8 @@ pattern DueBy f t <- UnsafeDueBy f t where
 -- | Smart constructor for maintenance statuses.
 maintenanceStatus
   :: MaintenanceFreq -> Time.NominalDiffTime -> MaintenanceStatus
-maintenanceStatus f t
-  | freqTime <= t = UnsafeDueBy f (Just $ freqTime - (t - freqTime))
+maintenanceStatus f (abs -> t)
+  | freqTime <= t = UnsafeDueBy f (Just $ t - freqTime)
   | otherwise     = UnsafeDueIn f (freqTime - t)
   where freqTime = freqDiffTime f
 
@@ -254,7 +253,7 @@ maintenanceStatuses
   -> Time.Day -- ^ Day the plant was planted
   -> Time.UTCTime -- ^ The time at which to determine due maintenances.
   -> MaintenanceStatuses -- ^ Map containing all maintenance types and the difference of time since the last time they were performed.
-maintenanceStatuses maints (latestMaintenances -> latest) dayPlanted atTime@Time.UTCTime { utctDay = atDay }
+maintenanceStatuses maints (latestMaintenances -> latest) dayPlanted computingAt@Time.UTCTime { utctDay = atDay }
   = let logBased = foldl' determineStatus mempty maints
     in  logBased <> datePlantedBased
  where
@@ -262,10 +261,8 @@ maintenanceStatuses maints (latestMaintenances -> latest) dayPlanted atTime@Time
     -- never performed: we rely on datePlantedBased then. 
     Nothing -> statuses
     Just lastPerformed ->
-      let timeSincePerformed = Time.diffUTCTime atTime lastPerformed
-      in  addToStats $ maintenanceStatus
-            _mFreq
-            (freqDiffTime _mFreq - timeSincePerformed)
+      let timeSincePerformed = Time.diffUTCTime computingAt lastPerformed
+      in  addToStats $ maintenanceStatus _mFreq timeSincePerformed
     where addToStats v = M.insert _mType v statuses
   datePlantedBased =
     M.fromList
@@ -292,3 +289,10 @@ data FullPlantData = FullPlantData
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 makeLenses ''FullPlantData
+
+-- | Full plant data is ordered on the number of dues and the day planted.
+instance Ord FullPlantData where
+  fpd0 `compare` fpd1 = mkPair fpd0 `compare` mkPair fpd1
+   where
+    mkPair fpd =
+      (length . filterDues $ fpd ^. fpdMStatuses, fpd ^. fpdPlant . pDayPlanted)
