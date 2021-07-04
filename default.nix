@@ -38,25 +38,34 @@ in rp.project ({ pkgs, ... }: {
   # servant-reflex = self.callPackage ../../servant-reflex {};
   # } 
   overrides = self: super:
-  with sources; {
+    with sources; {
 
-    # inherit dbstorage-polysemy prelude-polysemy;
+      # inherit dbstorage-polysemy prelude-polysemy;
 
-    bulmex = self.callCabal2nix "bulmex" "${bulmex}/bulmex" { };
-    servant-reflex = self.callCabal2nix "servant-reflex" servant-reflex { };
-    # prelude-polysemy = import sources.prelude-polysemy;
-    prelude-polysemy = self.callCabal2nix "prelude-polysemy" prelude-polysemy {};
-    dbstorage-polysemy = self.callCabal2nix "dbstorage-polysemy" dbstorage-polysemy {};
+      bulmex = self.callCabal2nix "bulmex" "${bulmex}/bulmex" { };
+      servant-reflex = self.callCabal2nix "servant-reflex" servant-reflex { };
+      # prelude-polysemy = import sources.prelude-polysemy;
+      prelude-polysemy =
+        self.callCabal2nix "prelude-polysemy" prelude-polysemy { };
+      dbstorage-polysemy =
+        self.callCabal2nix "dbstorage-polysemy" dbstorage-polysemy { };
 
-    # composite-opaleye needs composite-base, which needs vinyl.
-    # These packages are included as overrides since they're either marked broken
-    # or aren't present.
-    composite-opaleye = self.callCabal2nix "composite-opaleye" "${composite}/composite-opaleye" {};
-    composite-base = self.callCabal2nix "composite-base" "${composite}/composite-base" {};
-    vinyl = self.callCabal2nix "vinyl" vinyl {};
+      # composite-opaleye needs composite-base, which needs vinyl.
+      # These packages are included as overrides since they're either marked broken
+      # or aren't present.
+      composite-opaleye =
+        self.callCabal2nix "composite-opaleye" "${composite}/composite-opaleye"
+        { };
+      composite-base =
+        self.callCabal2nix "composite-base" "${composite}/composite-base" { };
+      vinyl = self.callCabal2nix "vinyl" vinyl { };
 
-    reflex-dom-helpers =
-      self.callCabal2nix "reflex-dom-helpers" reflex-dom-helpers { };
+      reflex-dom-helpers =
+        self.callCabal2nix "reflex-dom-helpers" reflex-dom-helpers { };
+    };
+
+  shellToolOverrides = self: super: {
+    brittany = self.callCabal2nix "brittany" sources.brittany { };
   };
 
 })

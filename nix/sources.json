@@ -1,4 +1,10 @@
 {
+    "brittany": {
+        "ref": "master",
+        "repo": "git@github.com:lspitzner/brittany.git",
+        "rev": "434f9f8e49b847ef3e648672c5564b6dd0d3be67",
+        "type": "git"
+    },
     "bulmex": {
         "branch": "asheshambasta/feature/bounds",
         "description": "reflex infused with bulma",
