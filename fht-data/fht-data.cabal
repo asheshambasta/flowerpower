@@ -26,6 +26,7 @@ common common-default-extensions
     StrictData
     ViewPatterns
     LambdaCase
+    TypeApplications 
     
 common common-ghc-options 
   ghc-options:        -Wall -Wno-unused-do-bind
@@ -73,6 +74,7 @@ library
     Data.Property.Garden.Plant
     Data.Property.Garden
     Data.Property
+    -- simple cartesian coordinate support (2d)
     Data.Coordinate 
   other-modules: 
   
