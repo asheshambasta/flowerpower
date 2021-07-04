@@ -264,11 +264,10 @@ maintenanceStatuses maints (latestMaintenances -> latest) dayPlanted computingAt
       let timeSincePerformed = Time.diffUTCTime computingAt lastPerformed
       in  addToStats $ maintenanceStatus _mFreq timeSincePerformed
     where addToStats v = M.insert _mType v statuses
-  datePlantedBased =
-    M.fromList
-      $ [ (_mType, diffDaysAsStatus _mFreq (Later atDay) (Earlier dayPlanted))
-        | Maintenance {..} <- maints
-        ]
+  datePlantedBased = M.fromList
+    [ (_mType, diffDaysAsStatus _mFreq (Later atDay) (Earlier dayPlanted))
+    | Maintenance {..} <- maints
+    ]
 
 -- | Get the maintenance statuses at the current time.
 -- See `maintenanceStatuses`
