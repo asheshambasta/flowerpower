@@ -1,7 +1,5 @@
-{-# LANGUAGE
-    DeriveAnyClass
-  , TemplateHaskell
-#-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-|
 Module: Data.Property
 Description: Propertyerty: a collection of 0 or more gardens: interior or exterior.
