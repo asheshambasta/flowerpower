@@ -8,7 +8,7 @@
 Module: Data.Garden.Plant
 Description: The core types 
 -}
-module Data.Garden.Plant
+module Data.Property.Garden.Plant
   ( Plant'(..)
   , Plant
   , PlantId'(..)

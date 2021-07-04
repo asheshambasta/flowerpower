@@ -70,7 +70,10 @@ library
 
   hs-source-dirs:     src
   exposed-modules:
-    Data.Garden.Plant
+    Data.Property.Garden.Plant
+    Data.Property.Garden
+    Data.Property
+    Data.Coordinate 
   other-modules: 
   
 -----------
@@ -88,7 +91,7 @@ test-suite fht-data-test
   hs-source-dirs:
     test
   other-modules:
-    Data.Garden.PlantSpec
+    Data.Property.Garden.PlantSpec
   build-depends: 
       QuickCheck
     , quickcheck-instances
